@@ -14,9 +14,9 @@ class PublicJobListView(View):
     template_name = 'public/jobs.html'
 
     def get(self, request):
-        jobs = JobPosting.objects.filter(
-            status=JobPosting.STATUS_OPEN, deleted_at__isnull=True, admin_disabled=False,
-        ).select_related(
+        # published() = PESO-approved + open + not trashed/disabled. Jobs
+        # awaiting approval (or rejected) never reach this listing.
+        jobs = JobPosting.published().select_related(
             'company',
             'experience_requirement',
         ).prefetch_related(
@@ -62,11 +62,7 @@ class PublicJobDetailView(View):
         # Anonymous visitors can only prev/next through Public postings —
         # if their current page happened to be a members-only job (via a
         # stale link) the 404 below handles it.
-        base_qs = JobPosting.objects.filter(
-            status=JobPosting.STATUS_OPEN,
-            deleted_at__isnull=True,
-            admin_disabled=False,
-        )
+        base_qs = JobPosting.published()
         if not request.user.is_authenticated:
             base_qs = base_qs.exclude(visibility=JobPosting.VISIBILITY_MEMBERS)
         all_jobs = list(base_qs.order_by('-created_at').values_list('id', flat=True))
@@ -137,7 +133,7 @@ class JobseekerJobDetailView(View):
             return redirect(f'/jobs/{_hashid(pk)}/')
 
         job = get_object_or_404(
-            JobPosting.objects.select_related(
+            JobPosting.published().select_related(
                 'company',
                 'experience_requirement',
             ).prefetch_related(
@@ -146,16 +142,10 @@ class JobseekerJobDetailView(View):
                 'education_requirements',
             ),
             pk=pk,
-            status=JobPosting.STATUS_OPEN,
-            deleted_at__isnull=True,
-            admin_disabled=False,
         )
 
-        all_jobs = list(JobPosting.objects.filter(
-            status=JobPosting.STATUS_OPEN,
-            deleted_at__isnull=True,
-            admin_disabled=False,
-        ).order_by('-created_at').values_list('id', flat=True))
+        all_jobs = list(JobPosting.published()
+                        .order_by('-created_at').values_list('id', flat=True))
 
         try:
             current_index = all_jobs.index(job.id)

@@ -236,6 +236,9 @@ class Command(BaseCommand):
                     'city': 'Iloilo City',
                     'slots': jt['slots'],
                     'status': JobPosting.STATUS_OPEN,
+                    # Pre-approved — seeded jobs stand in for posts PESO
+                    # has already reviewed, so they're publicly visible.
+                    'approval_status': JobPosting.APPROVAL_APPROVED,
                     'contact_email': company.recruitment_email or company.company_email or '',
                 },
             )

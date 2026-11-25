@@ -170,12 +170,13 @@ def _build_admin_notification_feed(per_category=5):
     Each item gets a stable `key` (e.g. "company:42") used for read-state
     tracking (AdminNotificationRead) and as a React-style list key.
 
-    `per_category` caps how many of EACH of the 4 categories get pulled in
-    (so one category spamming the queue can't crowd out the others) — pass
-    None for no cap, used by the full notifications page.
+    `per_category` caps how many of EACH category gets pulled in (so one
+    category spamming the queue can't crowd out the others) — pass None for
+    no cap, used by the full notifications page.
     """
     from apps.employers.models import Company
     from apps.jobseekers.models import PersonalInfoChangeRequest, JobseekerProfile
+    from apps.jobs.models import JobPosting
     from .models import UserReport
 
     def _slice(qs):
@@ -218,6 +219,24 @@ def _build_admin_notification_feed(per_category=5):
             'when':  _relative(submitted_at),
             'url':   f'/admin-panel/jobseekers/{_hashid(js.id)}/settings/',
             'at':    submitted_at,
+        })
+    # Job posts waiting on PESO's approve/reject decision. Oldest first —
+    # same ordering as the Pending tab on the jobs list, so the bell and
+    # the queue agree on what's next up.
+    for jp in _slice(JobPosting.objects
+               .filter(approval_status=JobPosting.APPROVAL_PENDING,
+                       deleted_at__isnull=True)
+               .select_related('company')
+               .order_by('submitted_at', 'created_at')):
+        at = jp.submitted_at or jp.created_at
+        feed.append({
+            'key':   f'jobapproval:{jp.id}',
+            'icon':  'briefcase',
+            'actor': jp.company.name,
+            'verb':  f'submitted a job post for approval: {jp.title}',
+            'when':  _relative(at),
+            'url':   f'/admin-panel/companies/{_hashid(jp.company_id)}/jobs/{_hashid(jp.id)}/?from=jobs',
+            'at':    at,
         })
     for ur in _slice(UserReport.objects
                .filter(status=UserReport.STATUS_OPEN)
@@ -267,9 +286,11 @@ def _admin_context(request):
       2. Pending personal-info change requests
       3. New user reports
       4. Pending jobseeker ID verifications (PESO Verified badge submissions)
+      5. Job posts submitted for approval
     """
     from apps.employers.models import Company
     from apps.jobseekers.models import PersonalInfoChangeRequest, JobseekerProfile
+    from apps.jobs.models import JobPosting
     from .models import UserReport, AdminNotificationRead
 
     pending_companies = Company.objects.filter(verification_status=Company.PENDING).count()
@@ -278,6 +299,8 @@ def _admin_context(request):
     pending_ids = JobseekerProfile.objects.filter(
         id_verification_status=JobseekerProfile.ID_PENDING).count()
     open_reports = UserReport.objects.filter(status=UserReport.STATUS_OPEN).count()
+    pending_jobs = JobPosting.objects.filter(
+        approval_status=JobPosting.APPROVAL_PENDING, deleted_at__isnull=True).count()
 
     feed = _build_admin_notification_feed(per_category=5)
     read_keys = set(
@@ -292,6 +315,7 @@ def _admin_context(request):
         'pending_jobseekers':    pending_jobseekers,
         'pending_ids':           pending_ids,
         'open_reports':          open_reports,
+        'pending_jobs':          pending_jobs,
         'admin_notifications':   feed[:10],
         # Drives both the dropdown copy and the bell badge number — counts
         # only UNREAD items, not every pending item (see AdminNotificationRead).
@@ -327,9 +351,10 @@ def admin_notifications_api(request):
         # Toast partial's fallback icon set has heart/sparkle/briefcase —
         # map the admin-side kinds onto those so slices don't miss.
         icon = {
-            'company': 'briefcase',
-            'user':    'sparkle',
-            'flag':    'warning',  # user reports — warning triangle, not heart
+            'company':   'briefcase',
+            'user':      'sparkle',
+            'flag':      'warning',  # user reports — warning triangle, not heart
+            'briefcase': 'briefcase',  # job post awaiting approval
         }.get(icon_kind, 'heart')
         out.append({
             'id':         stable_id,
@@ -748,8 +773,7 @@ def jobseeker_detail(request, pk):
         Application.objects.filter(jobseeker=jobseeker).values_list('job_id', flat=True)
     )
     scored = []
-    for job in (JobPosting.objects
-                .filter(status=JobPosting.STATUS_OPEN)
+    for job in (JobPosting.published()
                 .exclude(id__in=already_applied)
                 .select_related('company', 'experience_requirement')
                 .prefetch_related('skill_requirements', 'education_requirements')):
@@ -1006,9 +1030,7 @@ def jobseeker_compatible_jobs(request, pk):
 
     ranked = []
     if jobseeker.profile_complete:
-        for job in (JobPosting.objects
-                    .filter(status=JobPosting.STATUS_OPEN,
-                            deleted_at__isnull=True, admin_disabled=False)
+        for job in (JobPosting.published()
                     .exclude(id__in=already_applied)
                     .select_related('company', 'experience_requirement')
                     .prefetch_related('skill_requirements', 'education_requirements',
@@ -3123,6 +3145,10 @@ def admin_jobs_list(request):
     # removed rows leaked back into Open/Closed after a refresh.
     if status == 'deleted':
         qs = qs.filter(deleted_at__isnull=False)
+    elif status in {'pending', 'rejected'}:
+        # Approval queue tabs. These cut across open/closed — what matters
+        # is whether PESO has published the post yet.
+        qs = qs.filter(deleted_at__isnull=True, approval_status=status)
     elif status in {'open', 'closed', 'draft', 'admin_disabled'}:
         qs = qs.filter(deleted_at__isnull=True)
         if status == 'admin_disabled':
@@ -3131,7 +3157,9 @@ def admin_jobs_list(request):
             # Distinguish voluntary close from admin take-down.
             qs = qs.filter(status='closed', admin_disabled=False)
         else:
-            qs = qs.filter(status=status)
+            # Open means actually-live: approved by PESO, not just flagged
+            # open by the employer.
+            qs = qs.filter(status=status, approval_status=JobPosting.APPROVAL_APPROVED)
     else:
         # All-tab (no status param): hide soft-deleted rows.
         qs = qs.filter(deleted_at__isnull=True)
@@ -3140,6 +3168,10 @@ def admin_jobs_list(request):
         qs = qs.order_by('created_at')
     elif sort == 'applicants':
         qs = qs.order_by('-applicants_count', '-created_at')
+    elif status == 'pending':
+        # Review queue works best oldest-submission-first so nothing sits
+        # at the bottom of the pile forever.
+        qs = qs.order_by('submitted_at', 'created_at')
     else:  # newest
         qs = qs.order_by('-created_at')
 
@@ -3155,7 +3187,11 @@ def admin_jobs_list(request):
     live_for_counts = base_for_counts.filter(deleted_at__isnull=True)
     status_counts = {
         'all':            live_for_counts.count(),
-        'open':           live_for_counts.filter(status='open').count(),
+        'pending':        live_for_counts.filter(approval_status=JobPosting.APPROVAL_PENDING).count(),
+        'rejected':       live_for_counts.filter(approval_status=JobPosting.APPROVAL_REJECTED).count(),
+        'open':           live_for_counts.filter(
+                              status='open',
+                              approval_status=JobPosting.APPROVAL_APPROVED).count(),
         'closed':         live_for_counts.filter(status='closed', admin_disabled=False).count(),
         'draft':          live_for_counts.filter(status='draft').count(),
         'admin_disabled': live_for_counts.filter(admin_disabled=True).count(),
@@ -3244,6 +3280,135 @@ def admin_job_reopen(request, job_id):
         target_model='JobPosting', target_id=job.id,
         notes=f'Re-opened admin-disabled job "{job.title}".',
     )
+    return redirect('admin_panel:company_job_detail', pk=job.company_id, job_id=job_id)
+
+
+# ──────────────────────────────────────────────────────────────────────
+#  Job post approval queue (company submits → admin approves → published)
+# ──────────────────────────────────────────────────────────────────────
+def _notify_job_decision(request, job, approved, note):
+    """Shared tail of approve / reject: bell notification for every company
+    rep, transactional email, and an audit-log entry.
+
+    The job title is snapshotted into `liker_preview` because
+    Notification.job is SET_NULL — the notification has to still read
+    correctly if the posting is purged later.
+    """
+    from apps.notifications.models import Notification
+    from apps.notifications.email import email_job_approval_decision
+    from apps.employers.models import EmployerProfile
+    from .models import AuditLog
+
+    notif_type = (Notification.JOB_APPROVED if approved
+                  else Notification.JOB_REJECTED)
+    for rep in EmployerProfile.objects.filter(company=job.company).select_related('user'):
+        if rep.user:
+            Notification.objects.create(
+                recipient=rep.user,
+                notif_type=notif_type,
+                company=job.company,
+                job=job,
+                liker_preview=job.title,
+                admin_message=note,
+            )
+    try:
+        email_job_approval_decision(job, approved=approved, note=note)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            'email_job_approval_decision failed for job %s', job.id,
+        )
+
+    AuditLog.objects.create(
+        admin=request.user,
+        action=(AuditLog.ACTION_VERIFY if approved else AuditLog.ACTION_REJECT),
+        target_model='JobPosting', target_id=job.id,
+        notes=(f'{"Approved" if approved else "Rejected"} job post "{job.title}" '
+               f'({job.company.name}).' + (f' Note: {note}' if note else '')),
+    )
+
+
+@staff_required
+def admin_job_approve(request, job_id):
+    """Publish a submitted job post. POST only.
+
+    Flipping approval_status to 'approved' is what actually puts the posting
+    on the public listings (every public surface filters through
+    JobPosting.published()). High-match jobseeker notifications fire HERE
+    rather than at creation time, since this is the moment the job becomes
+    something a seeker can actually open and apply to.
+    """
+    from apps.jobs.models import JobPosting
+    from django.utils import timezone
+
+    job = get_object_or_404(JobPosting.objects.select_related('company'), id=job_id)
+    if request.method != 'POST':
+        return redirect('admin_panel:company_job_detail', pk=job.company_id, job_id=job_id)
+
+    if job.approval_status == JobPosting.APPROVAL_APPROVED:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'error': 'This post is already approved.'}, status=409)
+        return redirect('admin_panel:company_job_detail', pk=job.company_id, job_id=job_id)
+
+    note = (request.POST.get('note') or '').strip()
+    job.approval_status = JobPosting.APPROVAL_APPROVED
+    job.approval_note = note
+    job.reviewed_at = timezone.now()
+    job.reviewed_by = request.user
+    job.save(update_fields=['approval_status', 'approval_note', 'reviewed_at', 'reviewed_by'])
+
+    _notify_job_decision(request, job, approved=True, note=note)
+
+    # Now that the post is live, tell every jobseeker who scores above the
+    # threshold against it. Deliberately deferred from job_create — see the
+    # note there.
+    try:
+        from apps.notifications.utils import notify_high_match_jobseekers
+        notify_high_match_jobseekers(job, threshold=80)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            'notify_high_match_jobseekers failed for job %s', job.id,
+        )
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'approval_status': job.approval_status})
+    return redirect('admin_panel:company_job_detail', pk=job.company_id, job_id=job_id)
+
+
+@staff_required
+def admin_job_reject(request, job_id):
+    """Refuse to publish a submitted job post. POST only, reason required.
+
+    Not terminal: the employer can edit the post, which pushes it back to
+    'pending' for another review (see employers.views.job_edit).
+    """
+    from apps.jobs.models import JobPosting
+    from django.utils import timezone
+
+    job = get_object_or_404(JobPosting.objects.select_related('company'), id=job_id)
+    if request.method != 'POST':
+        return redirect('admin_panel:company_job_detail', pk=job.company_id, job_id=job_id)
+
+    note = (request.POST.get('note') or request.POST.get('reason') or '').strip()
+    if not note:
+        return JsonResponse({'ok': False, 'error': 'A reason is required.'}, status=400)
+
+    if job.approval_status == JobPosting.APPROVAL_REJECTED:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'error': 'This post is already rejected.'}, status=409)
+        return redirect('admin_panel:company_job_detail', pk=job.company_id, job_id=job_id)
+
+    job.approval_status = JobPosting.APPROVAL_REJECTED
+    job.approval_note = note
+    job.reviewed_at = timezone.now()
+    job.reviewed_by = request.user
+    job.save(update_fields=['approval_status', 'approval_note', 'reviewed_at', 'reviewed_by'])
+
+    _notify_job_decision(request, job, approved=False, note=note)
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'approval_status': job.approval_status})
     return redirect('admin_panel:company_job_detail', pk=job.company_id, job_id=job_id)
 
 

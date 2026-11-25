@@ -44,7 +44,7 @@ def dashboard(request):
         # is needed here beyond capping the preview to 5 rows.
         ranked_jobs = get_ranked_jobs(profile)[:5]
     else:
-        ranked_jobs = JobPosting.objects.filter(status='open', deleted_at__isnull=True, admin_disabled=False).order_by('-created_at').select_related('company')[:5]
+        ranked_jobs = JobPosting.published().order_by('-created_at').select_related('company')[:5]
         ranked_jobs = [{'job': j, 'score': None} for j in ranked_jobs]
 
     applications = (
@@ -61,7 +61,10 @@ def dashboard(request):
     followed_companies = profile.followed_companies.all()
     followed_jobs = []
     for company in followed_companies:
-        jobs = company.job_postings.filter(status='open', deleted_at__isnull=True, admin_disabled=False).order_by('-created_at')[:2]
+        jobs = company.job_postings.filter(
+            status='open', deleted_at__isnull=True, admin_disabled=False,
+            approval_status=JobPosting.APPROVAL_APPROVED,
+        ).order_by('-created_at')[:2]
         for job in jobs:
             followed_jobs.append({'company': company, 'job': job})
         if len(followed_jobs) >= 45:
@@ -109,10 +112,10 @@ def job_apply(request, job_id):
     from apps.jobs.models import Application
     # Jobseekers must never be able to apply to an admin-disabled or
     # soft-deleted job even via a stale link — those postings are off-limits.
-    job = get_object_or_404(
-        JobPosting, id=job_id, status='open',
-        deleted_at__isnull=True, admin_disabled=False,
-    )
+    # published() also blocks applying to a posting that is still awaiting
+    # PESO approval (or was rejected) — those are never publicly listed, so
+    # only a hand-crafted URL could reach them.
+    job = get_object_or_404(JobPosting.published(), id=job_id)
     message = (request.POST.get('message') or '').strip()
     app, created = Application.objects.get_or_create(
         jobseeker=profile, job=job,
@@ -514,6 +517,7 @@ def companies_list(request):
                                   job_postings__status=JobPosting.STATUS_OPEN,
                                   job_postings__deleted_at__isnull=True,
                                   job_postings__admin_disabled=False,
+                                  job_postings__approval_status=JobPosting.APPROVAL_APPROVED,
                               )),
     )
 
@@ -555,13 +559,11 @@ def company_public(request, pk):
     company = get_object_or_404(Company, pk=pk)
 
     jobs = (
-        # Public (jobseeker-facing) company profile: only genuinely-open
-        # jobs. Soft-deleted / admin_disabled ones are excluded so they
-        # never surface off the employer's own trash / disabled tabs.
-        JobPosting.objects.filter(
-            company=company, status=JobPosting.STATUS_OPEN,
-            deleted_at__isnull=True, admin_disabled=False,
-        )
+        # Public (jobseeker-facing) company profile: only genuinely-open,
+        # PESO-approved jobs. Soft-deleted / admin_disabled / awaiting-
+        # approval ones are excluded so they never surface off the
+        # employer's own trash / disabled / pending tabs.
+        JobPosting.published().filter(company=company)
         .annotate(
             liked_by_count=Count(
                 'jobseeker_interactions',
@@ -1211,8 +1213,12 @@ def recommended_jobs(request):
 
     # Soft-deleted OR admin-disabled jobs stay in the DB (employer's Trash /
     # Disabled tabs) but must not surface in Bookmarked / Hidden / recs.
+    # Unapproved / rejected postings drop out of Bookmarked + Hidden too —
+    # a seeker could have bookmarked a job that PESO later took back to
+    # pending, and it shouldn't keep showing as an available role.
     base_qs = JobPosting.objects.filter(
         deleted_at__isnull=True, admin_disabled=False,
+        approval_status=JobPosting.APPROVAL_APPROVED,
     ).select_related(
         'company', 'experience_requirement'
     ).prefetch_related('skill_requirements', 'certification_requirements', 'education_requirements')
@@ -1931,7 +1937,7 @@ def autocomplete_skills(request):
 
 def autocomplete_positions(request):
     query = request.GET.get('q', '').strip()
-    db_positions = JobPosting.objects.filter(status='open', deleted_at__isnull=True, admin_disabled=False).values_list(
+    db_positions = JobPosting.published().values_list(
         'title', flat=True).distinct()
     # semantic=False across all autocomplete endpoints so typing-UX flows
     # never trigger the sentence-transformers model load (~300MB RAM).

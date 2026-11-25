@@ -424,6 +424,10 @@ class Command(BaseCommand):
                     barangay_name=company_data['barangay'],
                     slots=random.randint(1, 5),
                     status='open',
+                    # Seeded demo data is pre-approved: it stands in for jobs
+                    # PESO has already reviewed, so it must be publicly visible
+                    # without anyone clicking through the approval queue.
+                    approval_status='approved',
                 )
 
                 # Education requirement

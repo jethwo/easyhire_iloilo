@@ -33,6 +33,19 @@ class JobPosting(models.Model):
         (VISIBILITY_MEMBERS, "Registered EasyHire Only"),
     ]
 
+    # PESO moderation gate. A newly-created posting starts PENDING and is
+    # invisible on every public / jobseeker / matching / analytics surface
+    # until an admin approves it. Rejection is not terminal — the employer
+    # can edit the post and resubmit it for another review.
+    APPROVAL_PENDING  = "pending"
+    APPROVAL_APPROVED = "approved"
+    APPROVAL_REJECTED = "rejected"
+    APPROVAL_CHOICES = [
+        (APPROVAL_PENDING,  "Pending Approval"),
+        (APPROVAL_APPROVED, "Approved"),
+        (APPROVAL_REJECTED, "Rejected"),
+    ]
+
     company = models.ForeignKey(
         "employers.Company", on_delete=models.CASCADE, related_name="job_postings"
     )
@@ -108,12 +121,91 @@ class JobPosting(models.Model):
         help_text="Public jobs appear on the marketing site; members-only jobs are hidden from anonymous visitors.",
     )
 
+    # ── PESO approval gate ────────────────────────────────────────────
+    # The company submits a posting; it sits at 'pending' until an admin
+    # approves it. ONLY 'approved' rows reach jobseekers — see
+    # JobPosting.published() for the single queryset every public surface
+    # filters through. Rows that existed before this gate landed were
+    # back-filled to 'approved' in migration 0020 so nothing already live
+    # vanished.
+    approval_status = models.CharField(
+        max_length=10, choices=APPROVAL_CHOICES, default=APPROVAL_PENDING,
+        help_text="Jobs are only published to jobseekers once a PESO admin approves them.",
+    )
+    # Admin's note on the decision — required on reject (it's what the
+    # employer sees and acts on), optional on approve.
+    approval_note = models.TextField(blank=True, default='')
+    # Stamped each time the employer submits/resubmits for review, so the
+    # admin queue can sort oldest-waiting-first.
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at  = models.DateTimeField(null=True, blank=True)
+    reviewed_by  = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="job_approvals",
+    )
+
     class Meta:
         db_table = "job_postings"
         ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.title} @ {self.company.name}"
+
+    # ── Visibility helpers ────────────────────────────────────────────
+    @classmethod
+    def approved(cls):
+        """Every posting PESO has cleared for publication, whatever its
+        open/closed state. Use this when you need approved-but-maybe-closed
+        rows (e.g. a jobseeker's bookmarks); use `published()` for live
+        listings."""
+        return cls.objects.filter(
+            approval_status=cls.APPROVAL_APPROVED,
+            deleted_at__isnull=True,
+            admin_disabled=False,
+        )
+
+    @classmethod
+    def published(cls):
+        """The one queryset every public / jobseeker / matching surface
+        should start from: approved by PESO, open, not trashed, not
+        admin-disabled. Anonymous-visitor views additionally exclude
+        members-only rows."""
+        return cls.approved().filter(status=cls.STATUS_OPEN)
+
+    @property
+    def is_pending_approval(self):
+        return self.approval_status == self.APPROVAL_PENDING
+
+    @property
+    def is_rejected(self):
+        return self.approval_status == self.APPROVAL_REJECTED
+
+    @property
+    def is_published(self):
+        """True when jobseekers can actually see this posting right now."""
+        return (
+            self.approval_status == self.APPROVAL_APPROVED
+            and self.status == self.STATUS_OPEN
+            and self.deleted_at is None
+            and not self.admin_disabled
+        )
+
+    @property
+    def employer_status_label(self):
+        """What the employer sees on their own postings list. The approval
+        gate outranks open/closed, because a 'pending' job labelled Open
+        would read as live when it isn't."""
+        if self.admin_deleted:
+            return "Deleted by PESO"
+        if self.deleted_at:
+            return "In Trash"
+        if self.admin_disabled:
+            return "Disabled by PESO"
+        if self.approval_status == self.APPROVAL_PENDING:
+            return "Pending Approval"
+        if self.approval_status == self.APPROVAL_REJECTED:
+            return "Rejected"
+        return "Closed" if self.status == self.STATUS_CLOSED else "Open"
 
     @property
     def location_display(self):

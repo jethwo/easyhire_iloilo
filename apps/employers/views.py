@@ -366,16 +366,27 @@ def job_list(request):
     # so the two flows have distinct tabs — different UX (Trash restorable
     # for 30 days; admin-deleted permanent + carries PESO's reason).
     live = base.filter(deleted_at__isnull=True)
+    # The approval gate is a separate axis from open/closed: a posting
+    # awaiting (or refused) PESO approval isn't live no matter what its
+    # open/closed flag says, so Open/Closed count approved rows only and
+    # Pending / Rejected get their own tabs.
+    approved = live.filter(approval_status=JobPosting.APPROVAL_APPROVED)
     all_count           = live.count()
-    open_count          = live.filter(status=JobPosting.STATUS_OPEN).count()
-    closed_count        = live.filter(status=JobPosting.STATUS_CLOSED).count()
+    open_count          = approved.filter(status=JobPosting.STATUS_OPEN).count()
+    closed_count        = approved.filter(status=JobPosting.STATUS_CLOSED).count()
+    pending_count       = live.filter(approval_status=JobPosting.APPROVAL_PENDING).count()
+    rejected_count      = live.filter(approval_status=JobPosting.APPROVAL_REJECTED).count()
     deleted_count       = base.filter(deleted_at__isnull=False, admin_deleted=False).count()
     admin_deleted_count = base.filter(admin_deleted=True).count()
 
     if status_filter == 'open':
-        jobs = live.filter(status=JobPosting.STATUS_OPEN)
+        jobs = approved.filter(status=JobPosting.STATUS_OPEN)
     elif status_filter == 'closed':
-        jobs = live.filter(status=JobPosting.STATUS_CLOSED)
+        jobs = approved.filter(status=JobPosting.STATUS_CLOSED)
+    elif status_filter == 'pending':
+        jobs = live.filter(approval_status=JobPosting.APPROVAL_PENDING)
+    elif status_filter == 'rejected':
+        jobs = live.filter(approval_status=JobPosting.APPROVAL_REJECTED)
     elif status_filter == 'deleted':
         jobs = base.filter(deleted_at__isnull=False, admin_deleted=False)
     elif status_filter == 'admin_deleted':
@@ -400,6 +411,8 @@ def job_list(request):
         'all_count':           all_count,
         'open_count':          open_count,
         'closed_count':        closed_count,
+        'pending_count':       pending_count,
+        'rejected_count':      rejected_count,
         'deleted_count':       deleted_count,
         'admin_deleted_count': admin_deleted_count,
         'unread_notifications': False,
@@ -474,6 +487,10 @@ def job_create(request):
         vis = (request.POST.get('visibility') or '').strip()
         if vis not in {JobPosting.VISIBILITY_PUBLIC, JobPosting.VISIBILITY_MEMBERS}:
             vis = JobPosting.VISIBILITY_PUBLIC
+        # Every new posting enters PESO's review queue rather than going
+        # straight live: company submits → admin approves → job is
+        # published. `submitted_at` is what the admin queue sorts on.
+        from django.utils import timezone
         job = JobPosting.objects.create(
             company=company,
             title=title,
@@ -489,6 +506,8 @@ def job_create(request):
             salary_max=request.POST.get('salary_max') or None,
             status=request.POST.get('status', 'open'),
             visibility=vis,
+            approval_status=JobPosting.APPROVAL_PENDING,
+            submitted_at=timezone.now(),
         )
 
         # Education requirements (may be multiple)
@@ -539,20 +558,18 @@ def job_create(request):
 
         _save_matching_criteria(request, job)
 
-        # Notify every jobseeker whose match score against this newly-
-        # posted job clears 80. Runs synchronously — fine at Iloilo scale
-        # (couple thousand seekers max); if it ever starts to add latency
-        # a Celery job is the natural swap.
-        try:
-            from apps.notifications.utils import notify_high_match_jobseekers
-            notify_high_match_jobseekers(job, threshold=80)
-        except Exception:
-            import logging
-            logging.getLogger(__name__).exception(
-                'notify_high_match_jobseekers failed for job %s', job.id,
-            )
-
-        return redirect('/employers/jobs/')
+        # NOTE: high-match jobseeker notifications deliberately do NOT fire
+        # here any more. The posting isn't public yet, so telling seekers
+        # about it would surface a job they can't open. They go out from
+        # admin_panel.views.admin_job_approve instead, once PESO publishes
+        # the post.
+        from django.contrib import messages
+        messages.success(
+            request,
+            'Job submitted for review. PESO Iloilo City will approve it before '
+            'it appears on the public job listings — you will be notified either way.',
+        )
+        return redirect('/employers/jobs/?status=pending')
 
     # Prefill location with the company's Iloilo branch address as the default.
     # Fallback chain: (1) the company's structured iloilo_* fields captured at
@@ -644,6 +661,20 @@ def job_edit(request, job_id):
         _vis = (request.POST.get('visibility') or '').strip()
         if _vis in {JobPosting.VISIBILITY_PUBLIC, JobPosting.VISIBILITY_MEMBERS}:
             job.visibility = _vis
+
+        # An employer editing a REJECTED post is resubmitting it — put it
+        # back in PESO's queue and clear the stale decision. Approved posts
+        # keep their approval through an edit (PESO can still disable one),
+        # and an admin's own edit never resets the gate they control.
+        resubmitted = False
+        if not is_admin_edit and job.approval_status == JobPosting.APPROVAL_REJECTED:
+            from django.utils import timezone
+            job.approval_status = JobPosting.APPROVAL_PENDING
+            job.approval_note = ''
+            job.reviewed_at = None
+            job.reviewed_by = None
+            job.submitted_at = timezone.now()
+            resubmitted = True
         job.save()
 
         # Education (may be multiple)
@@ -690,6 +721,14 @@ def job_edit(request, job_id):
             )
 
         _save_matching_criteria(request, job)
+
+        if resubmitted:
+            from django.contrib import messages
+            messages.success(
+                request,
+                'Changes saved and resubmitted for review. PESO Iloilo City will '
+                'take another look before this post goes live.',
+            )
 
         # Admin edits return to the admin job detail; employer edits go to
         # the employer's job list (existing behavior).
@@ -1414,10 +1453,12 @@ def candidate_detail(request, jobseeker_id):
         .first()
     )
 
-    # Open jobs at this company — used in the Contact modal's "Re: which job?" dropdown.
-    open_jobs = JobPosting.objects.filter(
-        company=company, status=JobPosting.STATUS_OPEN
-    ).order_by('-created_at')
+    # Open jobs at this company — used in the Contact modal's "Re: which job?"
+    # dropdown. Restricted to published postings: a candidate shouldn't be
+    # contacted about a role that is still waiting on PESO approval.
+    open_jobs = (JobPosting.published()
+                 .filter(company=company)
+                 .order_by('-created_at'))
 
     # Jobs this employer has ALREADY invited this jobseeker to apply for.
     # Sourced from the shared INVITED_TO_APPLY notification store — same

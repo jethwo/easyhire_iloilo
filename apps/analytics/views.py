@@ -108,8 +108,14 @@ def get_analytics_context(request):
     hired_monthly = monthly_counts_for_year(
         Application.objects.filter(status='hired'), selected_year
     )
+    # Only PESO-approved postings count as "jobs posted" — a submission
+    # still awaiting review (or one that was rejected) was never published,
+    # so it isn't part of the labour-market picture.
     new_jobs_monthly = monthly_counts_for_year(
-        JobPosting.objects.filter(deleted_at__isnull=True), selected_year
+        JobPosting.objects.filter(
+            deleted_at__isnull=True,
+            approval_status=JobPosting.APPROVAL_APPROVED,
+        ), selected_year
     )
     # Placements vs. unsuccessful applications — the second one is any
     # rejected application in the selected year. Rendered together as a
@@ -194,16 +200,20 @@ def get_analytics_context(request):
     from django.db.models import Sum
     external_hires_this_year = (
         JobPosting.objects
-        .filter(created_at__year=selected_year)
+        .filter(created_at__year=selected_year,
+                approval_status=JobPosting.APPROVAL_APPROVED)
         .aggregate(total=Sum('externally_hired_count'))['total']
     ) or 0
     external_hires_all_time = (
-        JobPosting.objects.aggregate(total=Sum('externally_hired_count'))['total']
+        JobPosting.objects
+        .filter(approval_status=JobPosting.APPROVAL_APPROVED)
+        .aggregate(total=Sum('externally_hired_count'))['total']
     ) or 0
 
     def external_hires_monthly_for_year(year):
         rows = (JobPosting.objects
-                .filter(created_at__year=year)
+                .filter(created_at__year=year,
+                        approval_status=JobPosting.APPROVAL_APPROVED)
                 .annotate(month=TruncMonth('created_at'))
                 .values('month')
                 .annotate(total=Sum('externally_hired_count'))
@@ -238,7 +248,10 @@ def get_analytics_context(request):
     avg_interactions = round(total_interactions / total_applicants, 1) if total_applicants else 0
 
     # ── Job stats ──────────────────────────────────────────────────
-    all_jobs = JobPosting.objects.filter(status='open', deleted_at__isnull=True)
+    all_jobs = JobPosting.objects.filter(
+        status='open', deleted_at__isnull=True,
+        approval_status=JobPosting.APPROVAL_APPROVED,
+    )
     total_jobs = all_jobs.count()
     local_jobs = all_jobs.filter(location_type='iloilo').count()
     overseas_jobs = all_jobs.filter(location_type='overseas').count()
@@ -467,7 +480,7 @@ def get_analytics_context(request):
     # fell through to iterating the Sector model — showing PWD / OSY / etc.
     # (marginalized-group labels) with zero counts.
     job_nature_pairs = (JobPosting.objects
-        .filter(status='open')
+        .filter(status='open', approval_status=JobPosting.APPROVAL_APPROVED)
         .exclude(company__nature_of_company='')
         .values_list('company__nature_of_company', flat=True))
     industry_job_counter = Counter()
@@ -487,8 +500,7 @@ def get_analytics_context(request):
     # resolves back to 'Other' when the city isn't recognisable.
     location_counter = Counter()
     for row in (
-        JobPosting.objects
-        .filter(status='open', deleted_at__isnull=True, admin_disabled=False)
+        JobPosting.published()
         .values('barangay_name', 'city')
     ):
         raw = (row['barangay_name'] or '').strip() or (row['city'] or '').strip()

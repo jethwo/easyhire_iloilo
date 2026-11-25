@@ -330,6 +330,9 @@ class Command(BaseCommand):
                         'description': jt['desc'], 'location_type': JobPosting.ILOILO,
                         'barangay_name': cd['address'].split(',')[0].strip(), 'city': 'Iloilo City',
                         'slots': jt['slots'], 'status': JobPosting.STATUS_OPEN,
+                        # Pre-approved — seeded jobs stand in for posts PESO
+                        # has already reviewed, so they're publicly visible.
+                        'approval_status': JobPosting.APPROVAL_APPROVED,
                         'contact_email': company.recruitment_email,
                     },
                 )

@@ -30,10 +30,22 @@
                 {% if not status %}bg-primary text-white{% else %}bg-white text-muted border border-gray-200 hover:text-primary{% endif %}">
         All <span class="opacity-70">{{ status_counts.all }}</span>
       </a>
+      {# Review queue first — it's the chip that needs acting on. Amber #}
+      {# border while anything is waiting so it reads as a to-do.        #}
+      <a href="?status=pending&sort={{ sort }}&q={{ search }}"
+         class="px-3 py-1 rounded-full text-xs font-semibold transition
+                {% if status == 'pending' %}bg-amber text-white{% elif status_counts.pending %}bg-amber/10 text-amber border border-amber/40 hover:bg-amber/20{% else %}bg-white text-muted border border-gray-200 hover:text-primary{% endif %}">
+        Pending Approval <span class="opacity-70">{{ status_counts.pending }}</span>
+      </a>
       <a href="?status=open&sort={{ sort }}&q={{ search }}"
          class="px-3 py-1 rounded-full text-xs font-semibold transition
                 {% if status == 'open' %}bg-primary text-white{% else %}bg-white text-muted border border-gray-200 hover:text-primary{% endif %}">
         Open <span class="opacity-70">{{ status_counts.open }}</span>
+      </a>
+      <a href="?status=rejected&sort={{ sort }}&q={{ search }}"
+         class="px-3 py-1 rounded-full text-xs font-semibold transition
+                {% if status == 'rejected' %}bg-red-500 text-white{% else %}bg-white text-muted border border-gray-200 hover:text-primary{% endif %}">
+        Rejected <span class="opacity-70">{{ status_counts.rejected }}</span>
       </a>
       <a href="?status=closed&sort={{ sort }}&q={{ search }}"
          class="px-3 py-1 rounded-full text-xs font-semibold transition
@@ -100,6 +112,12 @@
             <span class="text-[10px] font-semibold uppercase tracking-wide bg-gray-100 text-muted border border-gray-200 px-2 py-0.5 rounded-full">Employer Trash</span>
           {% elif job.admin_disabled %}
             <span class="text-[10px] font-semibold uppercase tracking-wide bg-red-50 text-red-500 border border-red-200 px-2 py-0.5 rounded-full">Disabled</span>
+          {% elif job.approval_status == 'pending' %}
+            {# Not yet published — this outranks the open/closed flag, which #}
+            {# would otherwise read as "live" on an unapproved post.          #}
+            <span class="text-[10px] font-semibold uppercase tracking-wide bg-amber/15 text-amber border border-amber/30 px-2 py-0.5 rounded-full">Pending</span>
+          {% elif job.approval_status == 'rejected' %}
+            <span class="text-[10px] font-semibold uppercase tracking-wide bg-red-50 text-red-500 border border-red-200 px-2 py-0.5 rounded-full">Rejected</span>
           {% elif job.status == 'open' %}
             <span class="text-[10px] font-semibold uppercase tracking-wide bg-teal/15 text-teal px-2 py-0.5 rounded-full">Open</span>
           {% elif job.status == 'closed' %}
@@ -122,6 +140,22 @@
             <div class="absolute right-0 mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-30 py-1 text-xs">
               <a href="/admin-panel/jobs/{{ job.id|hashid }}/edit/"
                  class="block px-3 py-2 text-primary hover:bg-surface">Edit Job</a>
+
+              {# Approval decision. Approve POSTs inline (no reason needed); #}
+              {# Reject needs a reason, so it links to the job detail page   #}
+              {# where the reason modal lives.                                #}
+              {% if job.approval_status != 'approved' %}
+              <form method="POST" action="/admin-panel/jobs/{{ job.id|hashid }}/approve/" class="block admin-job-approve-form">
+                {% csrf_token %}
+                <button type="button" data-approve-title="{{ job.title|escapejs }}"
+                        class="w-full text-left block px-3 py-2 text-teal font-semibold hover:bg-teal/10">Approve &amp; Publish</button>
+              </form>
+              {% endif %}
+              {% if job.approval_status != 'rejected' %}
+              <a href="/admin-panel/companies/{{ job.company.id|hashid }}/jobs/{{ job.id|hashid }}/?from=jobs#reject-job"
+                 class="block px-3 py-2 text-red-500 hover:bg-red-50">Reject Post</a>
+              {% endif %}
+              <hr class="my-1 border-gray-100">
 
               {% if job.admin_disabled %}
               <form method="POST" action="/admin-panel/jobs/{{ job.id|hashid }}/reopen/" class="block admin-job-reopen-form">
@@ -218,6 +252,28 @@
             onConfirm: function() { form.submit(); },
           });
         } else if (confirm('Re-open ' + title + '?')) {
+          form.submit();
+        }
+      });
+    });
+    // Approve confirm — also a plain POST (a note is optional on approve),
+    // behind the same confirm modal. Rejection is NOT handled here: it
+    // requires a reason, so that action links to the job detail page.
+    document.querySelectorAll('form.admin-job-approve-form button[data-approve-title]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const form  = btn.closest('form');
+        const title = btn.dataset.approveTitle || 'this job';
+        if (typeof window.confirmAction === 'function') {
+          window.confirmAction({
+            title: 'Publish “' + title + '”?',
+            body:  'The post goes live on the public job listings, jobseekers can apply to it, and high-match jobseekers get notified. The company is told it was approved.',
+            ctaLabel: 'Yes, publish',
+            ctaClass: 'bg-teal hover:bg-teal/90',
+            onConfirm: function() { form.submit(); },
+          });
+        } else if (confirm('Publish ' + title + '?')) {
           form.submit();
         }
       });

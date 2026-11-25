@@ -28,6 +28,8 @@ urlpatterns = [
     path('admin-panel/jobs/',                                             views.admin_jobs_list,                 name='admin_jobs_list'),
     path('admin-panel/jobs/<hashid:job_id>/disable/',                     views.admin_job_disable,               name='admin_job_disable'),
     path('admin-panel/jobs/<hashid:job_id>/reopen/',                      views.admin_job_reopen,                name='admin_job_reopen'),
+    path('admin-panel/jobs/<hashid:job_id>/approve/',                     views.admin_job_approve,               name='admin_job_approve'),
+    path('admin-panel/jobs/<hashid:job_id>/reject/',                      views.admin_job_reject,                name='admin_job_reject'),
   
     path('admin-panel/jobs/<hashid:job_id>/edit/',                        employer_views.job_edit,               name='admin_job_edit'),
     path('admin-panel/companies/<hashid:pk>/',                               views.company_detail,                  name='company_detail'),

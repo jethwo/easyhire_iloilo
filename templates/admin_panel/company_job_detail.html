@@ -45,6 +45,16 @@
       <span class="inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-200">
         Disabled by Admin
       </span>
+      {% elif job.approval_status == 'pending' %}
+      {# Awaiting PESO's decision — shown instead of Open/Closed, which     #}
+      {# would read as live on a post that isn't published yet.             #}
+      <span class="inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-full bg-amber/15 text-amber border border-amber/30">
+        Pending Approval
+      </span>
+      {% elif job.approval_status == 'rejected' %}
+      <span class="inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-200">
+        Rejected
+      </span>
       {% else %}
       <span class="inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-full
         {% if job.status == 'open' %}bg-teal/15 text-teal{% elif job.status == 'closed' %}bg-gray-100 text-muted{% else %}bg-amber/15 text-amber{% endif %}">
@@ -63,6 +73,15 @@
         <div id="admin-actions-menu" class="hidden absolute right-0 top-9 bg-white border border-gray-200 rounded-xl shadow-lg z-30 w-48 py-1">
           <a href="/admin-panel/jobs/{{ job.id|hashid }}/edit/"
              class="block px-4 py-2 text-sm text-primary hover:bg-surface transition">Edit Job</a>
+          {% if job.approval_status != 'approved' %}
+          <button type="button" id="admin-approve-btn"
+                  class="block w-full text-left px-4 py-2 text-sm text-teal font-semibold hover:bg-teal/5 transition">Approve &amp; Publish</button>
+          {% endif %}
+          {% if job.approval_status != 'rejected' %}
+          <button type="button" id="admin-reject-btn"
+                  class="block w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition">Reject Post</button>
+          {% endif %}
+          <hr class="my-1 border-gray-100">
           {% if job.admin_disabled %}
           <button type="button" id="admin-reopen-btn"
                   class="block w-full text-left px-4 py-2 text-sm text-teal hover:bg-teal/5 transition">Re-open Job</button>
@@ -100,6 +119,58 @@
   </div>
   {% endif %}
 
+  {# ── Approval decision banner ───────────────────────────────────── #}
+  {# The review action lives here rather than only in the 3-dot menu:   #}
+  {# this page IS the review screen, so Approve / Reject should be the  #}
+  {# first thing an admin can reach after reading the post.             #}
+  {% if job.approval_status == 'pending' %}
+  <div class="mb-6 bg-amber/10 border border-amber/40 rounded-xl px-5 py-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div class="min-w-0">
+        <p class="text-primary font-bold text-sm mb-0.5">This post is waiting for your approval.</p>
+        <p class="text-muted text-xs">
+          Submitted {% if job.submitted_at %}{{ job.submitted_at|date:"F j, Y g:i A" }}{% else %}{{ job.created_at|date:"F j, Y g:i A" }}{% endif %}.
+          It is not visible to jobseekers and cannot be applied to until you approve it.
+        </p>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button type="button" id="banner-reject-btn"
+                class="bg-white border border-red-200 text-red-500 font-semibold px-4 py-2 rounded-full hover:bg-red-50 transition text-sm">Reject</button>
+        <button type="button" id="banner-approve-btn"
+                class="bg-teal text-white font-semibold px-5 py-2 rounded-full hover:bg-teal/90 transition text-sm">Approve &amp; Publish</button>
+      </div>
+    </div>
+  </div>
+  {% elif job.approval_status == 'rejected' %}
+  <div class="mb-6 bg-red-50 border border-red-200 rounded-xl px-5 py-4">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div class="min-w-0">
+        <p class="text-red-500 font-bold text-xs mb-1">Rejected
+          {% if job.reviewed_at %}on {{ job.reviewed_at|date:"F j, Y" }}{% endif %}
+          {% if job.reviewed_by %}by {{ job.reviewed_by.email }}{% endif %}
+        </p>
+        <p class="text-primary text-sm whitespace-pre-line">{{ job.approval_note|default:"No reason recorded." }}</p>
+        <p class="text-muted text-xs mt-1">The employer can edit this post, which resubmits it for review.</p>
+      </div>
+      <button type="button" id="banner-approve-btn"
+              class="flex-shrink-0 bg-teal text-white font-semibold px-5 py-2 rounded-full hover:bg-teal/90 transition text-sm">Approve Anyway</button>
+    </div>
+  </div>
+  {% elif job.approval_note %}
+  <div class="mb-6 bg-teal/8 border border-teal/30 rounded-xl px-5 py-3 text-sm">
+    <p class="text-teal font-bold text-xs mb-1">Approval note
+      {% if job.reviewed_at %}· {{ job.reviewed_at|date:"F j, Y" }}{% endif %}
+    </p>
+    <p class="text-primary whitespace-pre-line">{{ job.approval_note }}</p>
+  </div>
+  {% endif %}
+
+  {# Hidden form backing the Approve action (plain POST — a note is     #}
+  {# optional on approve, so no modal is needed).                        #}
+  {% if job.approval_status != 'approved' %}
+  <form method="POST" action="/admin-panel/jobs/{{ job.id|hashid }}/approve/" id="approve-form" class="hidden">{% csrf_token %}</form>
+  {% endif %}
+
   <div class="border-b border-taupe/40 mb-6"></div>
 
   {% include "admin_panel/_report_banner.html" %}
@@ -120,6 +191,29 @@
         <div class="flex gap-3 justify-end mt-4">
           <button type="button" data-close-disable class="bg-gray-100 text-primary font-semibold px-5 py-2 rounded-full hover:bg-gray-200 transition text-sm">Cancel</button>
           <button type="submit" class="bg-red-500 text-white font-semibold px-5 py-2 rounded-full hover:bg-red-600 transition text-sm">Disable &amp; Notify</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Reject modal — reason is mandatory; it's the only actionable detail
+       the employer receives, and it's what they fix before resubmitting. -->
+  {% if job.approval_status != 'rejected' %}
+  <div id="reject-modal" class="fixed inset-0 z-50 hidden items-center justify-center">
+    <div class="absolute inset-0 bg-black/40" data-close-reject></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 z-10">
+      <p class="text-red-500 font-bold text-base mb-1">Reject this job post?</p>
+      <p class="text-muted text-xs mb-4">It stays hidden from jobseekers. The reason below is sent to every rep of <strong class="text-primary">{{ company.name }}</strong>, who can edit the post and resubmit it for review.</p>
+      <form id="reject-form">
+        {% csrf_token %}
+        <label class="block text-primary text-xs font-semibold mb-1">Reason*</label>
+        <textarea name="note" rows="4" required placeholder="e.g. Salary range is missing — please add it and resubmit."
+                  class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition resize-none"></textarea>
+        <p id="reject-error" class="text-xs text-red-500 mt-2 hidden"></p>
+        <div class="flex gap-3 justify-end mt-4">
+          <button type="button" data-close-reject class="bg-gray-100 text-primary font-semibold px-5 py-2 rounded-full hover:bg-gray-200 transition text-sm">Cancel</button>
+          <button type="submit" class="bg-red-500 text-white font-semibold px-5 py-2 rounded-full hover:bg-red-600 transition text-sm">Reject &amp; Notify</button>
         </div>
       </form>
     </div>
@@ -180,6 +274,78 @@
         menu.classList.add('hidden');
       }
     });
+
+    // ── Approval flow (approve / reject) ─────────────────────────
+    {% if job.approval_status != 'approved' %}
+    // Approve is a plain POST behind the shared confirm modal — the note is
+    // optional, so there's nothing to collect. Both the 3-dot menu item and
+    // the banner button route here; either may be absent depending on the
+    // post's current approval state, hence the null guards.
+    function doApprove() {
+      menu.classList.add('hidden');
+      const submit = function() { document.getElementById('approve-form').submit(); };
+      if (typeof window.confirmAction === 'function') {
+        window.confirmAction({
+          title: 'Publish this job post?',
+          body:  'It goes live on the public job listings, jobseekers can apply to it, and high-match jobseekers get notified. The company is told it was approved.',
+          ctaLabel: 'Yes, publish',
+          ctaClass: 'bg-teal hover:bg-teal/90',
+          onConfirm: submit,
+        });
+      } else { submit(); }
+    }
+    ['admin-approve-btn', 'banner-approve-btn'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', doApprove);
+    });
+    {% endif %}
+
+    {% if job.approval_status != 'rejected' %}
+    // Reject needs a reason, so it goes through its own modal + fetch —
+    // same shape as the disable flow below.
+    const rejectModal = document.getElementById('reject-modal');
+    const rejectForm  = document.getElementById('reject-form');
+    const rejectErr   = document.getElementById('reject-error');
+    function showReject() { rejectModal.classList.remove('hidden'); rejectModal.classList.add('flex'); }
+    function hideReject() { rejectModal.classList.add('hidden');    rejectModal.classList.remove('flex');
+                            rejectForm.reset(); rejectErr.classList.add('hidden'); }
+    ['admin-reject-btn', 'banner-reject-btn'].forEach(function(id) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', function() { menu.classList.add('hidden'); showReject(); });
+    });
+    rejectModal.querySelectorAll('[data-close-reject]').forEach(function(el) {
+      el.addEventListener('click', hideReject);
+    });
+    // Auto-open when arriving with #reject-job — the admin jobs list's
+    // three-dots menu links here with that hash so "Reject Post" from a
+    // card lands straight on the reason field.
+    if (window.location.hash === '#reject-job') {
+      showReject();
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    rejectForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      fetch('/admin-panel/jobs/{{ job.id|hashid }}/reject/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': getCookie('csrftoken') },
+        body: new FormData(rejectForm),
+      }).then(function(r) {
+        const ct = (r.headers.get('Content-Type') || '').toLowerCase();
+        if (ct.indexOf('application/json') === -1) {
+          return { ok: false, error: 'Server returned status ' + r.status + '. Please refresh and try again.' };
+        }
+        return r.json();
+      }).then(function(d) {
+        if (d && d.ok) { window.location.reload(); return; }
+        rejectErr.textContent = (d && d.error) || 'Something went wrong. Please refresh and try again.';
+        rejectErr.classList.remove('hidden');
+      }).catch(function() {
+        rejectErr.textContent = 'Network error — check your connection and try again.';
+        rejectErr.classList.remove('hidden');
+      });
+    });
+    {% endif %}
 
     {% if not job.admin_disabled %}
     // ── Disable flow ─────────────────────────────────────────────

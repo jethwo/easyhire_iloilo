@@ -158,3 +158,49 @@ def email_personal_info_decision(change_request, approved):
             f"— EasyHire"
         )
     _send(user.email, subject, body)
+
+
+def email_job_approval_decision(job, approved, note=''):
+    """Email every rep of the posting's company when PESO approves or
+    rejects a submitted job post.
+
+    On approve the post is already live, so the mail just points at it. On
+    reject `note` carries the admin's reason — it's the only actionable
+    detail the employer gets, so it's always included.
+    """
+    if not job:
+        return
+    from apps.employers.models import EmployerProfile
+
+    reps = (EmployerProfile.objects
+            .filter(company=job.company)
+            .select_related('user'))
+    for rep in reps:
+        user = getattr(rep, 'user', None)
+        if not user or not user.email:
+            continue
+        if approved:
+            subject = f'Your job post "{job.title}" is now live on EasyHire'
+            body = (
+                f"Hi {job.company.name},\n\n"
+                f"PESO Iloilo City has approved your job post \"{job.title}\". "
+                f"It now appears on the public job listings and jobseekers can apply to it.\n\n"
+            )
+            if note:
+                body += f"Note from PESO: {note}\n\n"
+            body += (
+                "View your postings: https://easyhire.ph/employers/jobs/\n\n"
+                "— EasyHire"
+            )
+        else:
+            subject = f'Update on your job post "{job.title}"'
+            body = (
+                f"Hi {job.company.name},\n\n"
+                f"PESO Iloilo City reviewed your job post \"{job.title}\" and did not "
+                f"approve it for publication. It is not visible to jobseekers.\n\n"
+                f"Reason: {note or 'No reason provided.'}\n\n"
+                f"You can edit the post and resubmit it for review from your postings page:\n"
+                f"https://easyhire.ph/employers/jobs/?status=rejected\n\n"
+                f"— EasyHire"
+            )
+        _send(user.email, subject, body)

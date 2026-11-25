@@ -130,6 +130,27 @@
       });
     })();
   </script>
+  {# Approval state banner — mirrors the one on the postings list so the #}
+  {# employer sees why a post isn't live from either screen.              #}
+  {% if not job.deleted_at %}
+    {% if job.approval_status == 'pending' %}
+    <div class="mb-6 bg-amber/10 border border-amber/30 rounded-xl px-5 py-4 text-sm">
+      <p class="text-amber font-bold mb-0.5">Waiting for PESO approval</p>
+      <p class="text-muted text-xs">
+        This post isn't on the public job listings yet and jobseekers can't apply to it.
+        PESO Iloilo City reviews every submission before it goes live — you'll be notified either way.
+      </p>
+    </div>
+    {% elif job.approval_status == 'rejected' %}
+    <div class="mb-6 bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-sm">
+      <p class="text-red-500 font-bold mb-1">Not approved by PESO</p>
+      <p class="text-primary whitespace-pre-line mb-2">{{ job.approval_note|default:"No reason provided." }}</p>
+      <a href="/employers/jobs/{{ job.id|hashid }}/edit/"
+         class="inline-flex items-center text-teal font-semibold text-xs hover:underline">Edit and resubmit for review &rarr;</a>
+    </div>
+    {% endif %}
+  {% endif %}
+
   <div class="border-b border-taupe/30 mb-6"></div>
 
   <!-- ── Two-column: Description + Requirements ─────────────────── -->

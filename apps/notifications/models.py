@@ -9,6 +9,11 @@ class Notification(models.Model):
     JOBSEEKERS_LIKED_JOB = 'jobseekers_liked_job'
     MATCH = 'match'
     JOB_DELETED_BY_ADMIN = 'job_deleted_by_admin'
+    # PESO reviewed a submitted job posting. APPROVED publishes it to
+    # jobseekers; REJECTED keeps it private and carries the admin's
+    # reason so the employer can fix and resubmit.
+    JOB_APPROVED = 'job_approved'    # employer-facing
+    JOB_REJECTED = 'job_rejected'    # employer-facing
     PERSONAL_INFO_APPROVED = 'personal_info_approved'
     PERSONAL_INFO_REJECTED = 'personal_info_rejected'
     # PESO reviewed the jobseeker's uploaded ID document.
@@ -41,6 +46,8 @@ class Notification(models.Model):
         (JOBSEEKERS_LIKED_JOB,   'Jobseekers Liked Job'),
         (MATCH,                  'Match'),
         (JOB_DELETED_BY_ADMIN,   'Job Deleted by Admin'),
+        (JOB_APPROVED,           'Job Post Approved'),
+        (JOB_REJECTED,           'Job Post Rejected'),
         (PERSONAL_INFO_APPROVED, 'Personal Info Change Approved'),
         (PERSONAL_INFO_REJECTED, 'Personal Info Change Rejected'),
         (ID_VERIFICATION_APPROVED, 'ID Verification Approved'),

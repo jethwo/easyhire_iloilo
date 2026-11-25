@@ -945,7 +945,10 @@ def get_ranked_jobseekers(job, sector_filter=False):
 def get_ranked_jobs(profile, sector_filter=False):
     from apps.jobs.models import JobPosting
     from apps.jobseekers.templatetags.match_tags import VISIBILITY_THRESHOLD
-    jobs = JobPosting.objects.filter(status='open', deleted_at__isnull=True, admin_disabled=False).select_related(
+    # published() keeps postings awaiting PESO approval out of the
+    # recommendation feed — an unapproved job isn't live, so it must not
+    # be matched or notified on.
+    jobs = JobPosting.published().select_related(
         'company', 'experience_requirement', 'matching_weights'
     ).prefetch_related('skill_requirements', 'certification_requirements', 'education_requirements', 'custom_criteria')
 

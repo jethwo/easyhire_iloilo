@@ -102,6 +102,26 @@ def notifications_api(request):
             item['icon']   = 'warning'
             item['meta']   = ''
             item['url']    = '/employers/jobs/' if n.recipient.is_employer else '#'
+        elif n.notif_type == Notification.JOB_APPROVED:
+            # `liker_preview` snapshots the job title so the text survives a
+            # later purge of the JobPosting row (job FK is SET_NULL).
+            item['actor']  = 'PESO Admin'
+            item['verb']   = (f'approved your job post "{n.liker_preview or "Untitled"}" '
+                              '— it is now live on EasyHire.')
+            item['quoted'] = n.admin_message or ''
+            item['icon']   = 'check'
+            item['meta']   = ''
+            item['url']    = (f'/employers/jobs/{_hashid(n.job.id)}/' if n.job
+                              else '/employers/jobs/')
+        elif n.notif_type == Notification.JOB_REJECTED:
+            item['actor']  = 'PESO Admin'
+            item['verb']   = (f'did not approve your job post "{n.liker_preview or "Untitled"}". '
+                              'Edit it and resubmit for review.')
+            item['quoted'] = n.admin_message or 'No reason provided.'
+            item['icon']   = 'xmark'
+            item['meta']   = ''
+            item['url']    = (f'/employers/jobs/{_hashid(n.job.id)}/edit/' if n.job
+                              else '/employers/jobs/?status=rejected')
         elif n.notif_type == Notification.PERSONAL_INFO_APPROVED:
             item['actor'] = 'PESO Admin'
             item['verb']  = 'approved your personal information change request.'
