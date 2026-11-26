@@ -21,6 +21,10 @@ media/
 *.dump
 *.sql.gz
 
+# Locally generated account lists (regenerate from the DB instead of
+# committing them — the seeded accounts differ per database)
+demo_credentials_mariadb.txt
+
 # Environment variables
 .env
 
