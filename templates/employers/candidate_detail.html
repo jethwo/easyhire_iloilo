@@ -1,5 +1,5 @@
 {% extends "base/base_dashboard_employer.html" %}
-{% load static match_tags employer_nav %}
+{% load static match_tags employer_nav message_tags %}
 
 {% block title %}{{ jobseeker.full_name }} — EasyHire{% endblock %}
 
@@ -625,9 +625,21 @@
         </div>
 
         <div>
-          <label class="block text-primary text-xs font-medium mb-1">Message*</label>
+          {# 1000-character cap, shared with the jobseeker's application   #}
+          {# message. maxlength blocks typing past it; the counter below   #}
+          {# shows the remaining budget, and the view rejects anything     #}
+          {# longer in case a preset or a paste slips through.             #}
+          <div class="flex items-baseline justify-between gap-2 mb-1">
+            <label class="block text-primary text-xs font-medium">Message*</label>
+            <span id="contact-body-counter" class="text-[11px] text-muted tabular-nums">0 / {% message_max_length %}</span>
+          </div>
           <textarea name="body" id="contact-body" rows="8" required
+                    maxlength="{% message_max_length %}"
+                    data-max-length="{% message_max_length %}"
                     class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal transition resize-none"></textarea>
+          <p id="contact-body-over" class="hidden text-[11px] text-red-500 mt-1">
+            Your message is over the {% message_max_length %}-character limit — please shorten it.
+          </p>
         </div>
       </div>
 
@@ -804,7 +816,38 @@ Looking forward to hearing from you.`;
   }
   subj.addEventListener('input', () => { delete subj.dataset.preset; }, { once: true });
   body.addEventListener('input', () => { delete body.dataset.preset; }, { once: true });
+  updateBodyCounter();
 }
+
+// ── Message length counter ───────────────────────────────────────────
+// maxlength caps typing, but a preset assigned from JS can still exceed
+// the limit, so the counter doubles as the guard: over-limit disables
+// Send and shows the inline warning. The view enforces the same number.
+function updateBodyCounter() {
+  const body = document.getElementById('contact-body');
+  const out  = document.getElementById('contact-body-counter');
+  if (!body || !out) return;
+  const max  = parseInt(body.dataset.maxLength, 10) || 1000;
+  const len  = body.value.length;
+  const over = len > max;
+  out.textContent = len + ' / ' + max;
+  out.classList.toggle('text-red-500', over);
+  out.classList.toggle('text-muted', !over);
+  const warn = document.getElementById('contact-body-over');
+  if (warn) warn.classList.toggle('hidden', !over);
+  const send = document.getElementById('contact-send-btn');
+  if (send) {
+    send.disabled = over;
+    send.classList.toggle('opacity-40', over);
+    send.classList.toggle('cursor-not-allowed', over);
+  }
+}
+(function() {
+  const body = document.getElementById('contact-body');
+  if (!body) return;
+  body.addEventListener('input', updateBodyCounter);
+  updateBodyCounter();
+})();
 
 // Auto-open the Contact modal based on URL flags:
 //   ?open_interview=1 — Proceed flow → Schedule Interview tab

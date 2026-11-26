@@ -926,7 +926,10 @@ def job_detail(request, job_id):
 
     # Top ranked jobseekers for this job (excluding people who already applied).
     applicant_ids = set(Application.objects.filter(job=job).values_list('jobseeker_id', flat=True))
-    ranked = get_ranked_jobseekers(job)
+    # Respect the company's Recommended-Jobseekers scope (Settings → Candidate
+    # Recommendations): 'all' drops the match-score cut-off so the carousel
+    # mirrors what the full Recommended tab shows.
+    ranked = get_ranked_jobseekers(job, include_below_threshold=company.shows_all_jobseekers)
     ranked = [r for r in ranked if r['profile'].id not in applicant_ids][:8]
 
     # Actual applicants for THIS job. Newest first, capped at 8 to match
@@ -1087,7 +1090,9 @@ def candidates(request, job_id):
     status_counts = {}
 
     if tab == 'recommended':
-        ranked = get_ranked_jobseekers(job)
+        ranked = get_ranked_jobseekers(
+            job, include_below_threshold=company.shows_all_jobseekers,
+        )
         # Hide people who already applied so the lists complement each other
         applicant_ids = set(Application.objects.filter(job=job).values_list('jobseeker_id', flat=True))
         ranked = [r for r in ranked if r['profile'].id not in applicant_ids]
@@ -1549,7 +1554,10 @@ def candidate_detail(request, jobseeker_id):
             )
             ordered_ids = [
                 r['profile'].id
-                for r in get_ranked_jobseekers(current_job)
+                for r in get_ranked_jobseekers(
+                    current_job,
+                    include_below_threshold=company.shows_all_jobseekers,
+                )
                 if r['profile'].id not in _applicant_ids
             ]
         else:
@@ -1684,6 +1692,18 @@ def candidate_contact(request, jobseeker_id):
         return redirect(f'/employers/candidates/{_hashid(jobseeker_id)}/')
     if not subject or not body:
         messages.error(request, 'Subject and body are required.')
+        return redirect(f'/employers/candidates/{_hashid(jobseeker_id)}/')
+    # Hard cap on message length — same limit the jobseeker's application
+    # message gets. The textarea carries a maxlength + counter, so hitting
+    # this means the markup was bypassed; reject rather than silently
+    # truncating so the employer knows the message wasn't sent as written.
+    from apps.core.constants import MESSAGE_MAX_LENGTH
+    if len(body) > MESSAGE_MAX_LENGTH:
+        messages.error(
+            request,
+            f'Your message is {len(body)} characters — the limit is '
+            f'{MESSAGE_MAX_LENGTH}. Please shorten it and send again.',
+        )
         return redirect(f'/employers/candidates/{_hashid(jobseeker_id)}/')
 
     job = None
@@ -1923,6 +1943,19 @@ def employer_settings(request):
             company.recruitment_email = request.POST.get('recruitment_email', company.recruitment_email).strip()
             company.save(update_fields=['company_email', 'recruitment_email'])
             saved_section = 'company_contact'
+
+        elif form_type == 'recommendations':
+            # Recommended-Jobseekers scope. Two values only; anything else
+            # falls back to the restricted default rather than erroring,
+            # since this is a view preference and not critical data.
+            from apps.employers.models import Company as _Company
+            choice = (request.POST.get('recommendation_scope') or '').strip()
+            if choice not in {_Company.RECO_MATCHED, _Company.RECO_ALL}:
+                choice = _Company.RECO_MATCHED
+            company.recommendation_scope = choice
+            company.save(update_fields=['recommendation_scope'])
+            saved_section = ('recommendations_all' if choice == _Company.RECO_ALL
+                             else 'recommendations_matched')
 
         elif form_type == 'sectors':
             # PESO-approved sector change. Store the requested set on the

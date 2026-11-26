@@ -117,6 +117,19 @@ def job_apply(request, job_id):
     # only a hand-crafted URL could reach them.
     job = get_object_or_404(JobPosting.published(), id=job_id)
     message = (request.POST.get('message') or '').strip()
+    # Hard cap on the application message — same limit employers get on
+    # their outbound messages. The textarea carries a maxlength + counter,
+    # so reaching this means the markup was bypassed; reject rather than
+    # truncating so the jobseeker never sends a half-finished pitch.
+    from apps.core.constants import MESSAGE_MAX_LENGTH
+    if len(message) > MESSAGE_MAX_LENGTH:
+        err = (f'Your application message is {len(message)} characters — the '
+               f'limit is {MESSAGE_MAX_LENGTH}. Please shorten it and try again.')
+        if is_ajax:
+            return JsonResponse({'ok': False, 'error': err}, status=400)
+        from django.contrib import messages as _flash
+        _flash.error(request, err)
+        return redirect(f'/jobs/view/{_hashid(job_id)}/')
     app, created = Application.objects.get_or_create(
         jobseeker=profile, job=job,
         defaults={'message': message},

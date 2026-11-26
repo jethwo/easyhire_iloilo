@@ -26,6 +26,14 @@
   <div class="mb-4 bg-teal/10 border border-teal/30 text-teal text-sm rounded-xl px-4 py-2.5">
     Pending sector request cancelled.
   </div>
+  {% elif saved_section == 'recommendations_all' %}
+  <div class="mb-4 bg-teal/10 border border-teal/30 text-teal text-sm rounded-xl px-4 py-2.5">
+    Recommended Jobseekers now lists every jobseeker, including weak matches.
+  </div>
+  {% elif saved_section == 'recommendations_matched' %}
+  <div class="mb-4 bg-teal/10 border border-teal/30 text-teal text-sm rounded-xl px-4 py-2.5">
+    Recommended Jobseekers is now restricted to candidates who match your job posts.
+  </div>
   {% endif %}
   {% if error %}
   <div class="mb-4 bg-red-50 border border-red-200 text-red-500 text-sm rounded-xl px-4 py-2.5">{{ error }}</div>
@@ -216,6 +224,61 @@
       <button type="submit"
               class="bg-amber text-white text-sm font-semibold px-8 py-2 rounded-full hover:bg-amber/90 transition">
         Submit for PESO review
+      </button>
+    </div>
+  </form>
+
+  {# ── Candidate Recommendations ──────────────────────────────── #}
+  {# Controls how wide the Recommended Jobseekers list is on every job   #}
+  {# post. Restricted (default) keeps PESO's match cut-off; All drops it #}
+  {# so no eligible jobseeker is hidden from the employer.               #}
+  <div class="mt-8 mb-4">
+    <h2 class="text-lg font-bold text-primary">Candidate Recommendations</h2>
+    <p class="text-xs text-muted italic mt-0.5">
+      Choose how many jobseekers appear under <span class="font-semibold not-italic">Recommended Jobseekers</span> on your job posts.
+    </p>
+  </div>
+
+  <form method="POST" action="/employers/settings/" class="mb-10">
+    {% csrf_token %}
+    <input type="hidden" name="form_type" value="recommendations">
+
+    <div class="space-y-3">
+      <label class="flex items-start gap-3 bg-white border rounded-2xl px-4 py-3 cursor-pointer transition
+                    {% if company.recommendation_scope != 'all' %}border-teal ring-1 ring-teal/30{% else %}border-gray-200 hover:border-taupe/60{% endif %}">
+        <input type="radio" name="recommendation_scope" value="matched" class="mt-0.5 accent-teal flex-shrink-0"
+               {% if company.recommendation_scope != 'all' %}checked{% endif %}>
+        <span>
+          <span class="block text-primary text-sm font-semibold">Recommended jobseekers only</span>
+          <span class="block text-muted text-xs mt-0.5">
+            Show only jobseekers whose match score clears EasyHire's recommendation cut-off (65%).
+            A shorter, more relevant list.
+          </span>
+        </span>
+      </label>
+
+      <label class="flex items-start gap-3 bg-white border rounded-2xl px-4 py-3 cursor-pointer transition
+                    {% if company.recommendation_scope == 'all' %}border-teal ring-1 ring-teal/30{% else %}border-gray-200 hover:border-taupe/60{% endif %}">
+        <input type="radio" name="recommendation_scope" value="all" class="mt-0.5 accent-teal flex-shrink-0"
+               {% if company.recommendation_scope == 'all' %}checked{% endif %}>
+        <span>
+          <span class="block text-primary text-sm font-semibold">All jobseekers</span>
+          <span class="block text-muted text-xs mt-0.5">
+            Show every jobseeker on EasyHire, weak matches included, still ranked best match first.
+            A longer list you screen yourself.
+          </span>
+        </span>
+      </label>
+    </div>
+
+    <p class="text-[11px] text-muted italic mt-2">
+      Either way, jobseekers who deactivated their account or hid their profile after being hired stay hidden.
+    </p>
+
+    <div class="mt-4 flex justify-end">
+      <button type="submit"
+              class="bg-amber text-white text-sm font-semibold px-8 py-2 rounded-full hover:bg-amber/90 transition">
+        Save Preference
       </button>
     </div>
   </form>

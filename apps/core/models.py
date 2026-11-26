@@ -22,11 +22,17 @@ class InboxUserState(models.Model):
     SOURCE_CONTACT      = 'contact'
     SOURCE_ANNOUNCEMENT = 'announcement'
     SOURCE_VERIFICATION = 'verification'
+    # Invite to Apply. The source row is the INVITED_TO_APPLY Notification,
+    # which both sides see in their inbox (the jobseeker as an incoming
+    # invitation, the employer as their own outgoing copy) — so, like the
+    # other shared sources, hiding it has to be per-user.
+    SOURCE_INVITATION   = 'invitation'
     SOURCE_CHOICES = [
         (SOURCE_APPLICATION,  'Application'),
         (SOURCE_CONTACT,      'Employer Contact'),
         (SOURCE_ANNOUNCEMENT, 'Admin Announcement'),
         (SOURCE_VERIFICATION, 'Verification Update'),
+        (SOURCE_INVITATION,   'Invitation to Apply'),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='inbox_states')

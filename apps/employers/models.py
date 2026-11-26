@@ -75,6 +75,26 @@ class Company(models.Model):
     sectors_change_pending = models.BooleanField(default=False)
     sectors_change_requested_at = models.DateTimeField(null=True, blank=True)
 
+    # How wide the Recommended Jobseekers list is for this company.
+    # RECO_MATCHED (default) keeps the matching engine's visibility
+    # threshold in place, so the list only holds jobseekers who actually
+    # match the post. RECO_ALL drops the threshold so the employer sees
+    # every eligible jobseeker on the platform, weak matches included,
+    # still ranked best-match-first. Employers flip this themselves from
+    # Settings — it is a per-company view preference, not a PESO control,
+    # which is why it lives on Company rather than SiteSettings.
+    RECO_MATCHED = "matched"
+    RECO_ALL     = "all"
+    RECOMMENDATION_SCOPE_CHOICES = [
+        (RECO_MATCHED, "Recommended jobseekers only"),
+        (RECO_ALL,     "All jobseekers"),
+    ]
+    recommendation_scope = models.CharField(
+        max_length=10, choices=RECOMMENDATION_SCOPE_CHOICES, default=RECO_MATCHED,
+        help_text="Whether Recommended Jobseekers is restricted to matching "
+                  "candidates or shows every jobseeker.",
+    )
+
     # Verification
     verification_status = models.CharField(
         max_length=20, choices=VERIFICATION_CHOICES, default=UNVERIFIED
@@ -101,6 +121,12 @@ class Company(models.Model):
     @property
     def is_verified(self):
         return self.verification_status == self.VERIFIED
+
+    @property
+    def shows_all_jobseekers(self):
+        """True when this company opted out of the match-score cut-off on
+        the Recommended Jobseekers list."""
+        return self.recommendation_scope == self.RECO_ALL
 
 
 class EmployerProfile(models.Model):

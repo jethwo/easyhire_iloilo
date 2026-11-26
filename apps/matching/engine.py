@@ -910,7 +910,16 @@ def compute_match_score(job, profile):
     }
 
 
-def get_ranked_jobseekers(job, sector_filter=False):
+def get_ranked_jobseekers(job, sector_filter=False, include_below_threshold=False):
+    """Rank every eligible jobseeker against `job`, best match first.
+
+    `include_below_threshold=True` drops the VISIBILITY_THRESHOLD cut-off so
+    the caller gets EVERY eligible jobseeker, weak matches included. Employers
+    opt into that from Settings (Company.recommendation_scope == 'all'); the
+    default keeps PESO's rule that a sub-threshold score isn't a meaningful
+    recommendation. Privacy filters (deactivated accounts, hide-after-hire)
+    apply either way — "all jobseekers" never means "ignore privacy".
+    """
     from apps.jobseekers.models import JobseekerProfile
     from apps.jobseekers.templatetags.match_tags import VISIBILITY_THRESHOLD
     # Honor privacy: hide deactivated accounts, and hide profiles that have
@@ -928,7 +937,7 @@ def get_ranked_jobseekers(job, sector_filter=False):
     results = []
     for profile in jobseekers:
         score = compute_match_score(job, profile)
-        if score['total'] < VISIBILITY_THRESHOLD:
+        if not include_below_threshold and score['total'] < VISIBILITY_THRESHOLD:
             continue
         if sector_filter and not score['sector_match']:
             continue

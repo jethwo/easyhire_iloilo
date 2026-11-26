@@ -3,8 +3,9 @@
   the user has no items at all.
 
   Required context:
-    kind_filter  — '' for All, or one of: announcements/applications/interviews/requirements
-    kind_counts  — dict { 'announcements': N, 'applications': N, 'interviews': N, 'requirements': N }
+    kind_filter  — '' for All, or one of:
+                   announcements/applications/invitations/interviews/requirements
+    kind_counts  — dict keyed by those same names, each an int
     total_items  — overall total
     sort         — 'latest' (default) or 'oldest'; drives the sort dropdown
 {% endcomment %}
@@ -29,6 +30,11 @@
        class="px-3 py-1 rounded-full text-xs font-semibold transition
               {% if kind_filter == 'applications' %}bg-primary text-white{% else %}bg-white text-muted border border-gray-200 hover:text-primary{% endif %}">
       Applications <span class="opacity-70">{{ kind_counts.applications }}</span>
+    </a>
+    <a href="?kind=invitations{{ sort_q }}{% if search %}&q={{ search|urlencode }}{% endif %}"
+       class="px-3 py-1 rounded-full text-xs font-semibold transition
+              {% if kind_filter == 'invitations' %}bg-primary text-white{% else %}bg-white text-muted border border-gray-200 hover:text-primary{% endif %}">
+      Invitations <span class="opacity-70">{{ kind_counts.invitations }}</span>
     </a>
     <a href="?kind=interviews{{ sort_q }}{% if search %}&q={{ search|urlencode }}{% endif %}"
        class="px-3 py-1 rounded-full text-xs font-semibold transition

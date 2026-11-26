@@ -132,6 +132,20 @@ class SiteSettings(models.Model):
     weight_certifications = models.FloatField(default=0.10,
         help_text="Weight for certifications match (0.0-1.0).")
 
+    # Edit lock. Site settings are platform-wide (contact info in the public
+    # footer, the notification threshold the matching engine reads), so the
+    # page ships read-only: an admin has to unlock it before the form will
+    # save, then lock it again. Locked is the default for a fresh row and
+    # the view refuses a save while it is set, so a stray submit or a
+    # half-finished edit can't change live settings.
+    settings_locked = models.BooleanField(default=True,
+        help_text="When set, the admin Settings form is read-only until an admin unlocks it.")
+    lock_changed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="settings_lock_changes",
+        help_text="Admin who last locked or unlocked the settings form.")
+    lock_changed_at = models.DateTimeField(null=True, blank=True)
+
     updated_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name="settings_updates"
     )

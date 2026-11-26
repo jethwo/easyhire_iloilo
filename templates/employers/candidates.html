@@ -60,6 +60,21 @@
     {% endif %}
   </div>
 
+  {# Scope notice — tells the employer which Recommended-Jobseekers mode   #}
+  {# their company is on, with a shortcut to flip it in Settings.          #}
+  {% if tab == 'recommended' %}
+  <div class="mb-4 bg-surface border border-taupe/30 rounded-2xl px-4 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+    <p class="text-muted">
+      {% if company.recommendation_scope == 'all' %}
+      Showing <span class="text-primary font-semibold">all jobseekers</span> — weak matches included, ranked best match first.
+      {% else %}
+      Showing <span class="text-primary font-semibold">recommended jobseekers only</span> — candidates below a 65% match are hidden.
+      {% endif %}
+    </p>
+    <a href="/employers/settings/" class="text-teal font-semibold hover:underline flex-shrink-0">Change in Settings &rsaquo;</a>
+  </div>
+  {% endif %}
+
   {# Search bar — active on both tabs; hidden inputs preserve the current  #}
   {# tab + sort + status + min_match so hitting Search doesn't reset them. #}
   <form method="GET" action="/employers/jobs/{{ job.id|hashid }}/candidates/" class="flex items-center gap-2 mb-4">

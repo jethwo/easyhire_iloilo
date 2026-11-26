@@ -2129,6 +2129,12 @@ def algorithm_settings(request):
 
         if form_name == 'site':
             active_tab = 'site'
+            # The form is read-only while locked. Checked here (not only in
+            # the template) so a submit from a stale page or a hand-rolled
+            # POST can't slip past the padlock.
+            if settings.settings_locked:
+                error = 'Settings are locked. Unlock them before saving changes.'
+        if form_name == 'site' and error is None:
             office  = (request.POST.get('office_address') or '').strip()[:255]
             email   = (request.POST.get('contact_email') or '').strip()[:254]
             hotline = (request.POST.get('hotline') or '').strip()[:40]
@@ -2175,6 +2181,10 @@ def algorithm_settings(request):
     ).count()
     purged_raw = request.GET.get('purged', '')
     just_purged = int(purged_raw) if purged_raw.isdigit() else None
+    # 'locked' / 'unlocked' — drives the one-line confirmation after a toggle.
+    lock_notice = (request.GET.get('lock') or '').strip().lower()
+    if lock_notice not in {'locked', 'unlocked'}:
+        lock_notice = ''
 
     ctx = _admin_context(request)
     ctx.update({
@@ -2185,8 +2195,42 @@ def algorithm_settings(request):
         'trash_total':   trash_total,
         'trash_expired': trash_expired,
         'just_purged':   just_purged,
+        'lock_notice':   lock_notice,
     })
     return render(request, 'admin_panel/algorithm_settings.html', ctx)
+
+
+@staff_required
+def toggle_settings_lock(request):
+    """POST-only lock / unlock of the admin Settings form.
+
+    `action=unlock` opens the form for editing; `action=lock` closes it again.
+    The state lives on SiteSettings so it holds across sessions and is shared
+    by every PESO admin — one admin unlocking it is visible to the rest, and
+    both transitions land in the audit log.
+    """
+    from .models import SiteSettings, AuditLog
+    from django.utils import timezone
+    if request.method != 'POST':
+        return redirect('/admin-panel/settings/?tab=site')
+
+    settings = SiteSettings.get()
+    action = (request.POST.get('action') or '').strip().lower()
+    if action not in {'lock', 'unlock'}:
+        return redirect('/admin-panel/settings/?tab=site')
+
+    settings.settings_locked = (action == 'lock')
+    settings.lock_changed_by = request.user
+    settings.lock_changed_at = timezone.now()
+    settings.save(update_fields=[
+        'settings_locked', 'lock_changed_by', 'lock_changed_at', 'updated_at',
+    ])
+    AuditLog.objects.create(
+        admin=request.user, action=AuditLog.ACTION_EDIT,
+        target_model='SiteSettings', target_id=settings.id,
+        notes=f'{"Locked" if settings.settings_locked else "Unlocked"} the site settings form.',
+    )
+    return redirect(f'/admin-panel/settings/?tab=site&lock={action}ed')
 
 
 @staff_required

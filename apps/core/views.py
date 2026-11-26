@@ -181,6 +181,58 @@ def inbox(request):
                 'source_id': contact.id,
             })
 
+        # Invitations to apply received from employers. The source row is the
+        # INVITED_TO_APPLY notification (invite_to_apply creates no
+        # EmployerContact), so the inbox reads that store directly. Invites
+        # used to live only in the bell dropdown, where they scrolled out of
+        # reach — an invitation is a message from an employer, so it belongs
+        # in the inbox next to requirements and interview schedules.
+        from apps.notifications.models import Notification as _Notif
+        for inv in (_Notif.objects
+                    .filter(recipient=user, notif_type=_Notif.INVITED_TO_APPLY)
+                    .select_related('company', 'job')):
+            inv_company_name = inv.company.name if inv.company else 'An employer'
+            inv_company_url  = f'/companies/{_hashid(inv.company.id)}/' if inv.company else ''
+            # liker_preview snapshots the job title at invite time so the row
+            # still reads correctly after the posting is deleted.
+            inv_job_title = inv.job.title if inv.job else (inv.liker_preview or '')
+            inv_job_url = ''
+            if (inv.job and inv.job.status == 'open'
+                    and not inv.job.deleted_at and not inv.job.admin_disabled):
+                inv_job_url = f'/jobs/view/{_hashid(inv.job.id)}/'
+            if inv_job_title:
+                inv_body = (f'{inv_company_name} would like you to apply for '
+                            f'"{inv_job_title}".')
+            else:
+                inv_body = f'{inv_company_name} would like you to apply to one of their job posts.'
+            inv_body += ('\n\nOpen the job post to review the details and submit your application.'
+                         if inv_job_url else
+                         '\n\nThis job post is no longer accepting applications.')
+            items.append({
+                'kind': 'invitation',
+                'actor': inv_company_name,
+                'sender_company_name': inv_company_name,
+                'sender_company_url':  inv_company_url,
+                'sender_job_title':    inv_job_title,
+                'sender_job_url':      inv_job_url,
+                'verb': (f'invited you to apply for "{inv_job_title}".'
+                         if inv_job_title else 'invited you to apply.'),
+                'context': inv_job_title,
+                'timestamp': inv.created_at,
+                'url': inv_job_url or '/inbox/',
+                'detail_body': inv_body,
+                'detail_cta_label': 'View job post' if inv_job_url else '',
+                'detail_cta_url':   inv_job_url,
+                # Reportable as an employer-account report — same target the
+                # company profile's Report button uses.
+                'report_target_type': 'employer' if inv.company else '',
+                'report_target_id': inv.company.id if inv.company else None,
+                'report_label': (f'Re: invitation to apply for {inv_job_title}'
+                                 if inv_job_title else 'Re: invitation to apply'),
+                'source_type': 'invitation',
+                'source_id': inv.id,
+            })
+
         # Admin announcements targeting jobseekers (or all)
         for ann in AdminAnnouncement.objects.filter(
             audience__in=[AdminAnnouncement.AUDIENCE_ALL, AdminAnnouncement.AUDIENCE_JOBSEEKERS]
@@ -286,6 +338,46 @@ def inbox(request):
                 'report_label': '',
                 'source_type': 'contact',
                 'source_id': contact.id,
+            })
+
+        # Invitations this company sent — the employer's own outgoing copy,
+        # mirroring how sent EmployerContacts appear above. Keyed on company
+        # (not sender) so every rep sees the company's invitation history.
+        from apps.notifications.models import Notification as _Notif
+        for inv in (_Notif.objects
+                    .filter(notif_type=_Notif.INVITED_TO_APPLY, company=company)
+                    .select_related('jobseeker', 'job')):
+            inv_name = ''
+            if inv.jobseeker:
+                inv_name = f'{inv.jobseeker.first_name} {inv.jobseeker.last_name}'.strip()
+            inv_job_title = inv.job.title if inv.job else (inv.liker_preview or '')
+            inv_who = inv_name or 'this candidate'
+            if inv_job_title:
+                inv_body = f'You invited {inv_who} to apply for "{inv_job_title}".'
+            else:
+                inv_body = f'You invited {inv_who} to apply.'
+            inv_body += ('\n\nThey were notified in their EasyHire inbox. You can follow up '
+                         'with requirements or an interview schedule once they submit an '
+                         'application.')
+            inv_seeker_url = (f'/employers/candidates/{_hashid(inv.jobseeker.id)}/'
+                              if inv.jobseeker else '')
+            items.append({
+                'kind': 'invitation',
+                'actor': inv_name or 'Candidate',
+                'verb': (f'You sent an Invitation to Apply: "{inv_job_title}".'
+                         if inv_job_title else 'You sent an Invitation to Apply.'),
+                'context': inv_job_title,
+                'timestamp': inv.created_at,
+                'url': inv_seeker_url or '/inbox/',
+                'detail_body': inv_body,
+                'detail_cta_label': 'View resume' if inv_seeker_url else '',
+                'detail_cta_url': inv_seeker_url,
+                'is_outgoing': True,
+                'report_target_type': '',
+                'report_target_id': None,
+                'report_label': '',
+                'source_type': 'invitation',
+                'source_id': inv.id,
             })
 
         # Admin announcements targeting employers (or all)
@@ -453,6 +545,7 @@ def inbox(request):
     KIND_GROUPS = {
         'announcements': {'announcement'},
         'applications':  {'application_sent', 'application_received'},
+        'invitations':   {'invitation'},
         'interviews':    {'interview'},
         'requirements':  {'requirements'},
     }
@@ -513,7 +606,8 @@ def inbox(request):
 # three-dots menu and multi-select bar write to a single table. Views
 # accept (source_type, source_id) pairs; the caller is responsible for
 # sending the correct pair from the row's data attributes.
-_VALID_SOURCES = {'application', 'contact', 'announcement', 'verification'}
+_VALID_SOURCES = {'application', 'contact', 'announcement', 'verification',
+                  'invitation'}
 
 
 def _upsert_inbox_state(user, source_type, source_id, **fields):

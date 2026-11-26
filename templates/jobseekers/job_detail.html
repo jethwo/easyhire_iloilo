@@ -1,5 +1,5 @@
 {% extends "base/base_dashboard_jobseeker.html" %}
-{% load static match_tags %}
+{% load static match_tags message_tags %}
 
 {% block title %}{{ job.title }} — EasyHire{% endblock %}
 
@@ -220,9 +220,19 @@
 
       <form id="apply-form" method="POST" action="/jobs/{{ job.id|hashid }}/apply/">
         {% csrf_token %}
-        <label class="block text-primary text-xs font-medium mb-1">Application Message</label>
-        <textarea name="message" rows="6" placeholder="Introduce yourself and tell the employer why you're a great fit. This is optional."
+        {# 1000-character cap, shared with the employer's message box. #}
+        <div class="flex items-baseline justify-between gap-2 mb-1">
+          <label class="block text-primary text-xs font-medium">Application Message</label>
+          <span id="apply-message-counter" class="text-[11px] text-muted tabular-nums">0 / {% message_max_length %}</span>
+        </div>
+        <textarea name="message" id="apply-message" rows="6"
+                  maxlength="{% message_max_length %}"
+                  data-max-length="{% message_max_length %}"
+                  placeholder="Introduce yourself and tell the employer why you're a great fit. This is optional."
                   class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition resize-none"></textarea>
+        <p id="apply-message-over" class="hidden text-[11px] text-red-500 mt-1">
+          Your message is over the {% message_max_length %}-character limit — please shorten it.
+        </p>
 
         <p class="text-xs text-muted mt-3">
           Thoroughly check application message for any typos or sensitive information before submitting application.
@@ -308,6 +318,32 @@
       if (p.length === 2) return p.pop().split(';').shift();
       const tok = applyForm.querySelector('[name="csrfmiddlewaretoken"]');
       return tok ? tok.value : '';
+    }
+
+    // ── Message length counter ───────────────────────────────────
+    // maxlength caps typing; this mirrors the count back to the user and
+    // blocks the Apply button if the field somehow goes over (paste into
+    // a maxlength-stripped field, autofill, etc). The view enforces the
+    // same limit server-side.
+    const msgBox     = document.getElementById('apply-message');
+    const msgCounter = document.getElementById('apply-message-counter');
+    const msgOver    = document.getElementById('apply-message-over');
+    function updateMsgCounter() {
+      if (!msgBox || !msgCounter) return;
+      const max  = parseInt(msgBox.dataset.maxLength, 10) || 1000;
+      const len  = msgBox.value.length;
+      const over = len > max;
+      msgCounter.textContent = len + ' / ' + max;
+      msgCounter.classList.toggle('text-red-500', over);
+      msgCounter.classList.toggle('text-muted', !over);
+      if (msgOver) msgOver.classList.toggle('hidden', !over);
+      openConfirm.disabled = over;
+      openConfirm.classList.toggle('opacity-40', over);
+      openConfirm.classList.toggle('cursor-not-allowed', over);
+    }
+    if (msgBox) {
+      msgBox.addEventListener('input', updateMsgCounter);
+      updateMsgCounter();
     }
 
     applyBtn.addEventListener('click', () => show(applyModal));

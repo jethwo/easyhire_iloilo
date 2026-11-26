@@ -94,6 +94,7 @@ def _count_inbox_items(user):
     from apps.employers.models import EmployerContact
     from apps.jobs.models import Application
     from apps.core.models import InboxUserState
+    from apps.notifications.models import Notification as ActivityNotification
 
     dismissed = InboxUserState.objects.filter(
         user=user, is_dismissed=True,
@@ -110,6 +111,12 @@ def _count_inbox_items(user):
             + AdminAnnouncement.objects.filter(
                 audience__in=[AdminAnnouncement.AUDIENCE_ALL, AdminAnnouncement.AUDIENCE_JOBSEEKERS]
             ).count()
+            # Invitations to apply — inbox rows too, so they must be counted
+            # here or the "new inbox" dot drifts out of sync with the page.
+            + ActivityNotification.objects.filter(
+                recipient=user,
+                notif_type=ActivityNotification.INVITED_TO_APPLY,
+            ).count()
         )
         return max(0, total - dismissed)
 
@@ -118,16 +125,19 @@ def _count_inbox_items(user):
             company = user.employer_profile.company
         except Exception:
             return 0
-        from apps.notifications.models import Notification
         total = (
             Application.objects.filter(job__company=company).count()
             + EmployerContact.objects.filter(company=company).count()
             + AdminAnnouncement.objects.filter(
                 audience__in=[AdminAnnouncement.AUDIENCE_ALL, AdminAnnouncement.AUDIENCE_EMPLOYERS]
             ).count()
-            + Notification.objects.filter(
+            + ActivityNotification.objects.filter(
                 recipient=user,
                 liker_preview='an account verification update',
+            ).count()
+            # The company's outgoing Invitations to Apply.
+            + ActivityNotification.objects.filter(
+                notif_type=ActivityNotification.INVITED_TO_APPLY, company=company,
             ).count()
         )
         return max(0, total - dismissed)

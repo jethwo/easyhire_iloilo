@@ -8,6 +8,7 @@
   <h1 class="text-3xl sm:text-4xl font-extrabold text-primary mb-1">Settings</h1>
   <p class="text-muted text-sm mb-6">
     Configure PESO Iloilo's public-facing details and platform maintenance.
+    Settings stay locked until you unlock them for editing.
   </p>
 
   <!-- Tab bar -->
@@ -34,9 +35,71 @@
     Purged {{ just_purged }} expired job post{{ just_purged|pluralize }}. Historical applications for those jobs are preserved.
   </div>
   {% endif %}
+  {% if lock_notice == 'unlocked' %}
+  <div class="mb-4 bg-amber/10 border border-amber/30 text-amber text-sm rounded-xl px-4 py-2.5">
+    Settings unlocked — the fields below are editable. Lock them again when you're done.
+  </div>
+  {% elif lock_notice == 'locked' %}
+  <div class="mb-4 bg-teal/10 border border-teal/30 text-teal text-sm rounded-xl px-4 py-2.5">
+    Settings locked. Unlock to edit them again.
+  </div>
+  {% endif %}
 
   <!-- ─── Site Settings tab ──────────────────────────────────────── -->
   <section data-panel="site" {% if active_tab != 'site' %}class="hidden"{% endif %}>
+
+    {# ── Edit lock ─────────────────────────────────────────────────── #}
+    {# Site settings feed the public footer and the matching engine, so   #}
+    {# the form ships read-only. An admin unlocks it, edits, saves, then  #}
+    {# locks it again. The view refuses a save while locked, so this is   #}
+    {# a real gate and not just disabled inputs.                         #}
+    <div class="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+                rounded-2xl border px-5 py-4
+                {% if settings.settings_locked %}bg-gray-50 border-gray-200{% else %}bg-amber/5 border-amber/30{% endif %}">
+      <div class="flex items-start gap-3">
+        <span class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0
+                     {% if settings.settings_locked %}bg-gray-200 text-gray-500{% else %}bg-amber/15 text-amber{% endif %}">
+          {% if settings.settings_locked %}
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+          {% else %}
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+          </svg>
+          {% endif %}
+        </span>
+        <div>
+          <p class="text-sm font-bold {% if settings.settings_locked %}text-primary{% else %}text-amber{% endif %}">
+            {% if settings.settings_locked %}Settings are locked{% else %}Settings are unlocked{% endif %}
+          </p>
+          <p class="text-muted text-xs mt-0.5">
+            {% if settings.settings_locked %}
+            The fields below are read-only. Unlock to make changes.
+            {% else %}
+            Changes you save go live across EasyHire. Lock the settings again when you're finished.
+            {% endif %}
+            {% if settings.lock_changed_at %}
+            <span class="block mt-0.5 italic">
+              {% if settings.settings_locked %}Locked{% else %}Unlocked{% endif %}
+              {{ settings.lock_changed_at|date:"M j, Y g:i A" }}{% if settings.lock_changed_by %} by {{ settings.lock_changed_by.email }}{% endif %}.
+            </span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <form method="POST" action="/admin-panel/settings/lock/" id="lock-form" class="flex-shrink-0">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="{% if settings.settings_locked %}unlock{% else %}lock{% endif %}">
+        <button type="submit"
+                class="text-sm font-semibold px-6 py-2 rounded-full transition
+                       {% if settings.settings_locked %}bg-primary text-white hover:bg-teal{% else %}bg-white border border-taupe/50 text-primary hover:bg-surface{% endif %}">
+          {% if settings.settings_locked %}Unlock to Edit{% else %}Lock Settings{% endif %}
+        </button>
+      </form>
+    </div>
+
     <form method="POST" id="site-form" class="space-y-5">
       {% csrf_token %}
       <input type="hidden" name="form_name" value="site">
@@ -49,26 +112,26 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label class="block md:col-span-2">
             <span class="block text-xs font-semibold text-primary mb-1.5">Office Address</span>
-            <input type="text" name="office_address" maxlength="255"
+            <input type="text" name="office_address" {% if settings.settings_locked %}disabled{% endif %} maxlength="255"
                    value="{{ settings.office_address }}"
                    placeholder="e.g. PESO Iloilo City Hall, Plaza Libertad, Iloilo City"
-                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30">
+                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30 disabled:text-muted disabled:cursor-not-allowed">
           </label>
 
           <label class="block">
             <span class="block text-xs font-semibold text-primary mb-1.5">Contact Email</span>
-            <input type="email" name="contact_email" maxlength="254"
+            <input type="email" name="contact_email" {% if settings.settings_locked %}disabled{% endif %} maxlength="254"
                    value="{{ settings.contact_email }}"
                    placeholder="peso.iloilocity@gmail.com"
-                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30">
+                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30 disabled:text-muted disabled:cursor-not-allowed">
           </label>
 
           <label class="block">
             <span class="block text-xs font-semibold text-primary mb-1.5">Hotline</span>
-            <input type="text" name="hotline" maxlength="40"
+            <input type="text" name="hotline" {% if settings.settings_locked %}disabled{% endif %} maxlength="40"
                    value="{{ settings.hotline }}"
                    placeholder="(033) 337-XXXX"
-                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30">
+                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30 disabled:text-muted disabled:cursor-not-allowed">
           </label>
         </div>
       </div>
@@ -84,9 +147,9 @@
           <label class="block">
             <span class="block text-xs font-semibold text-primary mb-1.5">"New Compatible Job" cutoff</span>
             <div class="flex items-center gap-1">
-              <input type="number" name="compatibility_threshold" min="0" max="100" step="1"
+              <input type="number" name="compatibility_threshold" {% if settings.settings_locked %}disabled{% endif %} min="0" max="100" step="1"
                      value="{{ settings.compatibility_threshold|floatformat:0 }}"
-                     class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30">
+                     class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal/30 disabled:text-muted disabled:cursor-not-allowed">
               <span class="text-muted text-sm">%</span>
             </div>
             <p class="text-[11px] text-muted mt-1">Jobseekers get notified when a job matches at or above this score.</p>
@@ -102,10 +165,14 @@
         <p class="text-xs text-muted italic">
           Last updated {{ settings.updated_at|date:"M j, Y g:i A" }}{% if settings.updated_by %} by {{ settings.updated_by.email }}{% endif %}.
         </p>
+        {% if settings.settings_locked %}
+        <span class="text-xs text-muted italic">Unlock the settings above to edit and save.</span>
+        {% else %}
         <button type="submit" id="site-submit"
                 class="bg-amber text-white font-semibold px-6 py-2 rounded-full hover:bg-amber/90 transition text-sm">
           Save Site Settings
         </button>
+        {% endif %}
       </div>
     </form>
   </section>
@@ -190,10 +257,11 @@
   }
   tabs.forEach(function(t) { t.addEventListener('click', function() { activate(t.dataset.tab); }); });
 
-  // Pre-save confirmation for site settings
+  // Pre-save confirmation for site settings. Skipped entirely while the
+  // form is locked — there is no submit button to reach in that state.
   const siteForm = document.getElementById('site-form');
   let _siteConfirmed = false;
-  siteForm.addEventListener('submit', function(e) {
+  if (siteForm) siteForm.addEventListener('submit', function(e) {
     if (_siteConfirmed) return;
     e.preventDefault();
     confirmAction({
