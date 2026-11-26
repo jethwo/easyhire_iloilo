@@ -56,9 +56,18 @@ Copy the template and fill it in:
 Copy-Item .env.example .env
 ```
 
-At minimum set `SECRET_KEY`, `DB_PASSWORD`, and — if you are not using
-PostgreSQL — `DB_ENGINE` plus the `MYSQL_DB_*` block. Generate a secret key
-with:
+At minimum set:
+
+- **`DEBUG=True`** — required for local development. It defaults to `False`
+  when unset, and the comparison is case-sensitive (`true` and `1` both
+  read as False). With `DEBUG` off and no `DATABASE_URL`, settings.py
+  assumes it is running in production and refuses to start with a message
+  about Render.
+- **`SECRET_KEY`** and **`DB_PASSWORD`**.
+- **`DB_ENGINE`** plus the `MYSQL_DB_*` block, if you are not using
+  PostgreSQL.
+
+Generate a secret key with:
 
 ```powershell
 .venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
