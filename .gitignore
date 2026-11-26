@@ -17,6 +17,10 @@ local_settings.py
 db.sqlite3
 media/
 
+# Database dumps / backups (pg_dump, mysqldump)
+*.dump
+*.sql.gz
+
 # Environment variables
 .env
 

@@ -116,16 +116,72 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# The backend is selectable so the project runs on PostgreSQL (the original
+# target) or on MySQL / MariaDB without a code change — set DB_ENGINE in
+# .env. The schema itself is vendor-neutral; the few hand-written migrations
+# that used raw SQL now go through apps.core.migration_helpers, which emits
+# the right statements per backend.
+#
+# MariaDB and MySQL share one Django backend, so both map to the same value.
+_DB_ENGINES = {
+    'postgresql': 'django.db.backends.postgresql',
+    'postgres':   'django.db.backends.postgresql',
+    'mysql':      'django.db.backends.mysql',
+    'mariadb':    'django.db.backends.mysql',
+}
+_db_engine_key = os.getenv('DB_ENGINE', 'postgresql').strip().lower()
+if _db_engine_key not in _DB_ENGINES:
+    raise RuntimeError(
+        f"DB_ENGINE={_db_engine_key!r} is not supported. "
+        f"Use one of: {', '.join(sorted(_DB_ENGINES))}."
+    )
+_DB_ENGINE = _DB_ENGINES[_db_engine_key]
+_DB_IS_MYSQL = _DB_ENGINE == 'django.db.backends.mysql'
+
+def _db_setting(name, default=''):
+    """Read a connection setting, preferring an engine-specific override.
+
+    With DB_ENGINE=mysql, MYSQL_DB_* wins over plain DB_*. That lets one
+    .env carry credentials for BOTH servers at the same time, so switching
+    backends is a one-line DB_ENGINE change and the PostgreSQL settings
+    stay untouched for branches that still run on it.
+
+    Empty values fall through to the generic key, so a blank
+    MYSQL_DB_PASSWORD= line does not silently mean "no password".
+    """
+    if _DB_IS_MYSQL:
+        specific = os.getenv(f'MYSQL_{name}')
+        if specific:
+            return specific
+    return os.getenv(name, default)
+
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'easyhire'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+        'ENGINE': _DB_ENGINE,
+        'NAME': _db_setting('DB_NAME', 'easyhire'),
+        # Default account differs by server: postgres ships a 'postgres'
+        # superuser, MySQL / MariaDB ship 'root'.
+        'USER': _db_setting('DB_USER', 'root' if _DB_IS_MYSQL else 'postgres'),
+        'PASSWORD': _db_setting('DB_PASSWORD'),
+        'HOST': _db_setting('DB_HOST', 'localhost'),
+        'PORT': _db_setting('DB_PORT', '3306' if _DB_IS_MYSQL else '5432'),
     }
 }
+
+if _DB_IS_MYSQL:
+    DATABASES['default']['OPTIONS'] = {
+        # utf8mb4 so the full Unicode range survives a round trip — names
+        # with ñ, and anything outside the BMP. MySQL's legacy 'utf8' is
+        # only 3 bytes per character and silently mangles the rest.
+        'charset': 'utf8mb4',
+        # STRICT_TRANS_TABLES makes an over-long or badly typed value raise
+        # instead of being silently truncated, which is MySQL's default
+        # behaviour and hides bugs PostgreSQL would have caught.
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    }
+
+print(f"[settings] DB engine={_db_engine_key}", flush=True)
 
 # If DATABASE_URL is set (Render's Postgres add-on provides this), it wins.
 _db_url = os.getenv('DATABASE_URL')

@@ -1,5 +1,12 @@
 from django.db import migrations, models
 
+from apps.core.migration_helpers import add_column
+
+
+def _add_profile_visibility(apps, schema_editor):
+    add_column(schema_editor, 'jobseeker_profiles', 'profile_visibility',
+               'VARCHAR(20)', default='public')
+
 
 class Migration(migrations.Migration):
 
@@ -19,18 +26,7 @@ class Migration(migrations.Migration):
             ],
             # Column already exists in the DB — just backfill nulls and set a default
             database_operations=[
-                migrations.RunSQL(
-                    sql="""
-                        ALTER TABLE jobseeker_profiles
-                            ADD COLUMN IF NOT EXISTS profile_visibility VARCHAR(20) DEFAULT 'public';
-                        UPDATE jobseeker_profiles
-                           SET profile_visibility = 'public'
-                         WHERE profile_visibility IS NULL;
-                        ALTER TABLE jobseeker_profiles
-                            ALTER COLUMN profile_visibility SET DEFAULT 'public';
-                    """,
-                    reverse_sql=migrations.RunSQL.noop,
-                ),
+                migrations.RunPython(_add_profile_visibility, migrations.RunPython.noop),
             ],
         ),
     ]

@@ -1,5 +1,13 @@
 from django.db import migrations, models
 
+from apps.core.migration_helpers import add_column
+
+
+def _add_contact_fields(apps, schema_editor):
+    add_column(schema_editor, 'job_postings', 'contact_email',   'VARCHAR(254)')
+    add_column(schema_editor, 'job_postings', 'contact_phone',   'VARCHAR(20)')
+    add_column(schema_editor, 'job_postings', 'search_keywords', 'VARCHAR(500)')
+
 
 class Migration(migrations.Migration):
 
@@ -30,20 +38,7 @@ class Migration(migrations.Migration):
             ],
             # Backfill nulls and set defaults so subsequent inserts succeed
             database_operations=[
-                migrations.RunSQL(
-                    sql="""
-                        ALTER TABLE job_postings ADD COLUMN IF NOT EXISTS contact_email   VARCHAR(254) DEFAULT '';
-                        ALTER TABLE job_postings ADD COLUMN IF NOT EXISTS contact_phone   VARCHAR(20)  DEFAULT '';
-                        ALTER TABLE job_postings ADD COLUMN IF NOT EXISTS search_keywords VARCHAR(500) DEFAULT '';
-                        UPDATE job_postings SET contact_email   = '' WHERE contact_email   IS NULL;
-                        UPDATE job_postings SET contact_phone   = '' WHERE contact_phone   IS NULL;
-                        UPDATE job_postings SET search_keywords = '' WHERE search_keywords IS NULL;
-                        ALTER TABLE job_postings ALTER COLUMN contact_email   SET DEFAULT '';
-                        ALTER TABLE job_postings ALTER COLUMN contact_phone   SET DEFAULT '';
-                        ALTER TABLE job_postings ALTER COLUMN search_keywords SET DEFAULT '';
-                    """,
-                    reverse_sql=migrations.RunSQL.noop,
-                ),
+                migrations.RunPython(_add_contact_fields, migrations.RunPython.noop),
             ],
         ),
     ]
