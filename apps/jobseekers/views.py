@@ -37,14 +37,24 @@ def dashboard(request):
     skills = Skill.objects.filter(profile=profile)
     certifications = Certification.objects.filter(profile=profile)
 
+    from apps.jobseekers.models import JobInteraction
+    liked_ids = set(JobInteraction.objects.filter(
+        jobseeker=profile, interaction_type=JobInteraction.LIKED
+    ).values_list('job_id', flat=True))
+    hidden_ids = set(JobInteraction.objects.filter(
+        jobseeker=profile, interaction_type=JobInteraction.HIDDEN
+    ).values_list('job_id', flat=True))
+
     if profile.profile_complete:
         # get_ranked_jobs() already excludes anything below
         # match_tags.VISIBILITY_THRESHOLD (65) — everything it returns is
-        # either "Recommended" or "Highly Recommended", so no extra filter
-        # is needed here beyond capping the preview to 5 rows.
-        ranked_jobs = get_ranked_jobs(profile)[:5]
+        # either "Recommended" or "Highly Recommended". Jobs the user hid are
+        # dropped, then the preview is capped at 8 cards (two rows of four).
+        ranked_jobs = [r for r in get_ranked_jobs(profile)
+                       if r['job'].id not in hidden_ids][:8]
     else:
-        ranked_jobs = JobPosting.published().order_by('-created_at').select_related('company')[:5]
+        ranked_jobs = (JobPosting.published().order_by('-created_at')
+                       .select_related('company').exclude(id__in=hidden_ids)[:8])
         ranked_jobs = [{'job': j, 'score': None} for j in ranked_jobs]
 
     applications = (
@@ -53,6 +63,20 @@ def dashboard(request):
         .select_related('job', 'job__company')
         .order_by('-created_at')[:5]
     )
+    # The colored bar on each application card reflects how well the job matches
+    # this jobseeker (not the application status), so score the few shown here.
+    applications = list(applications)
+    if profile.profile_complete:
+        from apps.matching.engine import compute_match_score
+        for app in applications:
+            try:
+                total = compute_match_score(app.job, profile)['total']
+            except Exception:
+                total = None
+            app.tier = 'high' if total is not None and total >= 85 else                        'rec' if total is not None and total >= 65 else 'none'
+    else:
+        for app in applications:
+            app.tier = 'none'
 
     # Gather recent open jobs from followed companies. Cap at 45 (5 pages of
     # 9 with the client-side paginator in the template) so a jobseeker who
@@ -76,6 +100,8 @@ def dashboard(request):
         'skills': skills,
         'certifications': certifications,
         'ranked_jobs': ranked_jobs,
+        'liked_ids': liked_ids,
+        'hidden_ids': hidden_ids,
         'applications': applications,
         'followed_jobs': followed_jobs,
         'unread_notifications': False,
@@ -1355,6 +1381,7 @@ def recommended_jobs(request):
     context = {
         'profile': profile,
         'ranked_jobs': page_items,
+        'new_cards': True,   # new-UI card grid (see _jobs_grid_new.html)
         'liked_ids': liked_ids,
         'hidden_ids': hidden_ids,
         'tab': tab,

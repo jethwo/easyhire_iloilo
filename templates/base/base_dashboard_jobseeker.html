@@ -6,6 +6,7 @@
 {% block footer %}{% endblock %}
 
 {% block extra_head %}
+{% block theme_head %}{% endblock %}
 <style>
   /* ── Mobile (default): off-canvas drawer ───────────────────── */
   #sidebar {
@@ -36,7 +37,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="flex flex-col min-h-screen bg-surface font-sans">
+<div class="flex flex-col min-h-screen bg-surface font-sans {% block chrome_class %}{% endblock %}">
 
   <!-- ── Top bar ─────────────────────────────────────────────────── -->
   <header class="fixed top-0 left-0 right-0 z-40 bg-surface border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 py-3 h-14">
@@ -48,15 +49,18 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
       </button>
+      {% block brand %}
       <a href="/dashboard/" class="flex items-center gap-2">
         <img src="{% static 'images/navbar_logo.svg' %}" alt="EasyHire" class="w-7 h-7 sm:w-8 sm:h-8">
         <span class="font-extrabold text-base sm:text-lg">
           <span class="text-primary">Easy</span><span class="text-teal">Hire</span><span class="text-primary">.</span>
         </span>
       </a>
+      {% endblock %}
     </div>
 
     <div class="flex items-center gap-1">
+      {% block header_actions %}{% endblock %}
       <!-- Bell -->
       <div class="relative" id="notif-container">
         <button id="notif-btn" class="w-9 h-9 flex items-center justify-center rounded-full hover:bg-primary/8 transition relative">
@@ -282,7 +286,7 @@
       <div class="px-4 sm:px-6 lg:px-8 pb-16 min-h-[calc(100vh_-_3.5rem)]">
         {% block page_content %}{% endblock %}
       </div>
-      {% include "base/footer.html" %}
+      {% block dash_footer %}{% include "base/footer.html" %}{% endblock %}
     </main>
 
   </div>

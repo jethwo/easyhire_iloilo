@@ -1,35 +1,33 @@
-{% extends "base/base_dashboard_jobseeker.html" %}
+{% extends "base/base_jobseeker_themed.html" %}
 {% load static match_tags %}
 
 {% block title %}Jobs For You — EasyHire{% endblock %}
 
 {% with active_nav="jobs" %}
 {% block page_content %}
-<div class="min-h-screen">
+<div class="eh-dash eh-listpage">
 
-  <div class="py-8">
+  <div>
 
     {# Header row: title on the left, search on the right — matches the  #}
     {# Jobseekers / Companies admin pages instead of a centered search    #}
     {# hanging above a left-aligned title.                                #}
-    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
-      <h1 id="page-heading" class="text-3xl sm:text-4xl font-extrabold text-primary">
+    <div class="eh-pagehead">
+      <h1 id="page-heading" class="eh-pagetitle">
         {% if tab == 'liked' %}Bookmarked <span>Jobs</span>
         {% elif tab == 'hidden' %}Hidden <span>Jobs</span>
         {% else %}Jobs <span>For You</span>{% endif %}
       </h1>
-      <form id="search-form" method="GET" action="/jobs/for-you/" class="w-full sm:w-auto sm:max-w-md sm:flex-1">
+      <form id="search-form" method="GET" action="/jobs/for-you/" class="eh-searchform">
         <input type="hidden" name="tab"      id="search-tab"      value="{{ tab }}">
         <input type="hidden" name="sort"     id="search-sort"     value="{{ sort }}">
         <input type="hidden" name="sectors"  id="search-sectors"  value="{{ sector_codes|join:',' }}">
         <input type="hidden" name="locations" id="search-locations" value="{{ location_codes|join:',' }}">
         <input type="hidden" name="min_match" id="search-min-match" value="{{ min_match }}">
-        <div class="relative">
-          <input type="text" name="q" id="search-q" value="{{ search|default:'' }}" placeholder="Search Jobs..."
-                 class="w-full bg-white border border-gray-200 rounded-full pl-5 pr-12 py-2.5 text-sm text-primary placeholder-gray-400 focus:outline-none focus:border-teal transition shadow-sm">
-          <button type="submit"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-primary transition">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="eh-input-wrap">
+          <input type="text" name="q" id="search-q" value="{{ search|default:'' }}" placeholder="Search Jobs..." class="eh-input">
+          <button type="submit" class="eh-search-btn" aria-label="Search">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
             </svg>
           </button>
@@ -38,8 +36,8 @@
     </div>
 
     <!-- Tabs + Sort -->
-    <div class="flex items-center justify-between gap-4 mb-6 flex-wrap">
-      <div class="flex items-center gap-1.5" id="tab-bar">
+    <div class="eh-ctl-row">
+      <div class="eh-tabs" id="tab-bar">
         <button type="button" data-tab="for_you"
                 class="tab-btn px-4 py-1.5 rounded-full text-xs font-semibold transition {% if tab != 'liked' and tab != 'hidden' %}bg-primary text-white{% else %}bg-white text-muted border border-gray-200 hover:text-primary{% endif %}">
           For You
@@ -148,14 +146,12 @@
 
     <!-- Incomplete profile nudge -->
     {% if not profile.profile_complete %}
-    <div class="bg-amber/10 border border-amber/30 rounded-2xl px-4 sm:px-6 py-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="eh-nudge">
       <div>
         <p class="text-primary font-semibold text-sm">Your résumé is incomplete</p>
         <p class="text-muted text-xs mt-0.5">Complete your résumé to get personalised job recommendations.</p>
       </div>
-      <a href="/resume/" class="bg-amber text-white text-sm font-semibold px-5 py-2 rounded-full hover:bg-amber/90 transition flex-shrink-0 sm:ml-4 w-fit">
-        Complete Résumé
-      </a>
+      <a href="/resume/" class="eh-btn eh-btn-sm">Complete Résumé</a>
     </div>
     {% endif %}
 
@@ -221,14 +217,44 @@ function toggleLike(jobId, btn) {
             svg.setAttribute('stroke', 'currentColor');
             svg.setAttribute('stroke-width', '2');
             if (currentTab === 'liked') {
-                btn.closest('.job-card').remove();
+                btn.closest('.eh-card').remove();
                 checkEmptyAfterRemove();
             }
         }
     }).catch(function(){ btn.disabled = false; });
 }
 
-// ── Hide / Unhide ─────────────────────────────────────────────────────
+// ── New-UI card icons (_dash_card.html calls ehLike / ehHide) ────────
+function ehPost(path, btn, done) {
+    btn.disabled = true;
+    fetch(path, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': getCookie('csrftoken') } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ btn.disabled = false; done(d); })
+        .catch(function(){ btn.disabled = false; });
+}
+function ehRemoveCard(card) {
+    card.style.transition = 'opacity .2s'; card.style.opacity = '0';
+    setTimeout(function(){ card.remove(); checkEmptyAfterRemove(); }, 200);
+}
+function ehLike(e, jobId, btn) {
+    e.preventDefault(); e.stopPropagation();
+    ehPost('/jobs/' + jobId + '/like/', btn, function(d) {
+        btn.classList.toggle('is-on', !!d.liked);
+        btn.title = d.liked ? 'Remove bookmark' : 'Bookmark this job';
+        if (!d.liked && currentTab === 'liked') ehRemoveCard(btn.closest('.eh-card'));
+    });
+}
+function ehHide(e, jobId, btn) {
+    e.preventDefault(); e.stopPropagation();
+    ehPost('/jobs/' + jobId + '/hide/', btn, function(d) {
+        const card = btn.closest('.eh-card');
+        if ((d.hidden && currentTab !== 'hidden') || (!d.hidden && currentTab === 'hidden')) { ehRemoveCard(card); return; }
+        btn.classList.toggle('is-on', !!d.hidden);
+        btn.title = d.hidden ? 'Unhide this job' : 'Hide this job';
+    });
+}
+
+// ── Hide / Unhide (old card grid) ─────────────────────────────────────
 function toggleHide(jobId, btn) {
     btn.disabled = true;
     fetch('/jobs/' + jobId + '/hide/', {
@@ -236,7 +262,7 @@ function toggleHide(jobId, btn) {
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': getCookie('csrftoken') },
     }).then(function(r){ return r.json(); }).then(function(data){
         btn.disabled = false;
-        const card = btn.closest('.job-card');
+        const card = btn.closest('.eh-card');
         if (data.hidden && currentTab !== 'hidden') {
             card.remove();
             checkEmptyAfterRemove();
@@ -259,7 +285,7 @@ function toggleHide(jobId, btn) {
 
 function checkEmptyAfterRemove() {
     const wrapper = document.getElementById('jobs-grid-wrapper');
-    if (!wrapper.querySelector('.job-card')) {
+    if (!wrapper.querySelector('.eh-card')) {
         reloadGrid();
     }
 }

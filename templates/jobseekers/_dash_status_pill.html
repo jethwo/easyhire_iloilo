@@ -1,0 +1,14 @@
+{# Application status tag (text only). Pass `status` (Application.status). #}
+{% if status == 'hired' %}
+<span class="eh-status is-green">Hired</span>
+{% elif status == 'hire_pending' %}
+<span class="eh-status is-green">Offered</span>
+{% elif status == 'accepted' %}
+<span class="eh-status is-sky">In Progress</span>
+{% elif status == 'viewed' %}
+<span class="eh-status is-amber">Viewed</span>
+{% elif status == 'rejected' %}
+<span class="eh-status is-gray">Not Selected</span>
+{% else %}
+<span class="eh-status is-gray">Pending</span>
+{% endif %}

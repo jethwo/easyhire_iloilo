@@ -1,0 +1,31 @@
+<nav class="eh-nav" aria-label="Main">
+  <div class="eh-nav-links">
+    <a href="/about/">About</a>
+    <a href="/jobs/" class="is-strong">Jobs on EasyHire</a>
+    <a href="/analytics/">Analytics</a>
+    <a href="/help/" class="is-strong">FAQs</a>
+  </div>
+
+  <button type="button" class="eh-nav-toggle" id="eh-nav-toggle" aria-label="Open menu" aria-expanded="false">
+    <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+
+  <div class="eh-nav-menu" id="eh-nav-menu">
+    <a href="/about/">About</a>
+    <a href="/jobs/">Jobs on EasyHire</a>
+    <a href="/analytics/">Analytics</a>
+    <a href="/help/">FAQs</a>
+    <a href="/login/">EasyHire for Jobseekers</a>
+    <a href="/employers/login/">EasyHire for Employers</a>
+  </div>
+</nav>
+<script>
+(function () {
+  var btn = document.getElementById('eh-nav-toggle'), menu = document.getElementById('eh-nav-menu');
+  if (!btn || !menu) return;
+  btn.addEventListener('click', function () {
+    var open = menu.classList.toggle('is-open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
+</script>
