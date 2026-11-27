@@ -28,9 +28,12 @@
     #main-content { margin-left: 11rem; }
     body.sidebar-collapsed #sidebar      { width: 3.25rem; }
     body.sidebar-collapsed #main-content { margin-left: 3.25rem; }
-    body.sidebar-collapsed .nav-label    { display: none; }
-    body.sidebar-collapsed .nav-link     { justify-content: center; padding-left: 0; padding-right: 0; }
-    body.sidebar-collapsed .nav-divider  { margin-left: 0.5rem; margin-right: 0.5rem; }
+    /* Hovering the collapsed sidebar (.is-peek) opens it over the page without
+       moving the page; only the toggle button reflows #main-content. */
+    body.sidebar-collapsed #sidebar.is-peek { width: 11rem; box-shadow: 4px 0 16px rgba(0,0,0,0.12); }
+    body.sidebar-collapsed #sidebar:not(.is-peek) .nav-label    { display: none; }
+    body.sidebar-collapsed #sidebar:not(.is-peek) .nav-link     { justify-content: center; padding-left: 0; padding-right: 0; }
+    body.sidebar-collapsed #sidebar:not(.is-peek) .nav-divider  { margin-left: 0.5rem; margin-right: 0.5rem; }
     #mobile-overlay { display: none !important; }
   }
 </style>
@@ -298,9 +301,23 @@
   if (localStorage.getItem('sidebar-collapsed') === 'true') {
     document.body.classList.add('sidebar-collapsed');
   }
+  const sidebar = document.getElementById('sidebar');
+  let peekLocked = false;
   document.getElementById('sidebar-toggle').addEventListener('click', function() {
     const collapsed = document.body.classList.toggle('sidebar-collapsed');
     localStorage.setItem('sidebar-collapsed', collapsed);
+    // The pointer is still over the sidebar after the click: stay closed until
+    // it leaves, otherwise collapsing would look like it did nothing.
+    sidebar.classList.remove('is-peek');
+    peekLocked = collapsed;
+  });
+  // Hover peek (collapsed state only — the CSS ignores .is-peek otherwise).
+  sidebar.addEventListener('mouseenter', function() {
+    if (!peekLocked) sidebar.classList.add('is-peek');
+  });
+  sidebar.addEventListener('mouseleave', function() {
+    peekLocked = false;
+    sidebar.classList.remove('is-peek');
   });
 })();
 

@@ -1225,9 +1225,9 @@ def recommended_jobs(request):
     sector_codes = [c for c in request.GET.get('sectors', '').split(',') if c]
     location_codes = [c for c in request.GET.get('locations', '').split(',') if c]
 
-    # Minimum match score — single value, 0 means "no min filter". Keys the
-    # threshold to the same tier boundaries the badge pills use so the label
-    # reads consistently ("Recommended+" chip → Recommended badge tier).
+    # Match tier — single value, 0 means "no tier filter". The value is the
+    # tier's lower boundary (same boundaries the badge pills use), and the
+    # filter shows only that tier: 85 → Highly Recommended, 65 → Recommended.
     try:
         min_match = int(request.GET.get('min_match') or 0)
     except (TypeError, ValueError):
@@ -1318,9 +1318,14 @@ def recommended_jobs(request):
         ranked_jobs = [r for r in ranked_jobs if r['job'].location_type in location_codes]
     if min_match:
         # Jobs with score=None (jobseeker's resume incomplete → no score
-        # computed) are excluded when a threshold is active; those never
-        # meaningfully belong in a "matches at least X%" bucket.
-        ranked_jobs = [r for r in ranked_jobs if (r.get('score') or 0) >= min_match]
+        # computed) are excluded when a tier is active. The Recommended tier
+        # stops short of the Highly Recommended boundary so the two don't overlap.
+        tier_ceiling = 85 if min_match == 65 else None
+        ranked_jobs = [
+            r for r in ranked_jobs
+            if (r.get('score') or 0) >= min_match
+            and (tier_ceiling is None or (r.get('score') or 0) < tier_ceiling)
+        ]
     from apps.core.pagination import paginate, querystring_without
     page = paginate(request, ranked_jobs, per_page=12)
     page_items = list(page.object_list)
@@ -1369,13 +1374,13 @@ def recommended_jobs(request):
         {'code': JobPosting.REMOTE,   'label': 'Remote'},
         {'code': JobPosting.OVERSEAS, 'label': 'Overseas'},
     ]
-    # Match-score threshold chips. Values line up with the tier boundaries
-    # defined in apps.jobseekers.templatetags.match_tags.TIERS so the label
-    # copy tracks the badges on each card.
+    # Match-tier chips. Values line up with the tier boundaries defined in
+    # apps.jobseekers.templatetags.match_tags.TIERS so the label copy tracks
+    # the badges on each card.
     min_match_choices = [
         {'value': 0,  'label': 'Any match'},
         {'value': 85, 'label': 'Highly Recommended'},
-        {'value': 65, 'label': 'Recommended+'},
+        {'value': 65, 'label': 'Recommended'},
     ]
 
     context = {

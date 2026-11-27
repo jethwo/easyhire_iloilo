@@ -119,6 +119,10 @@ function ehLike(e, jobId, btn) {
   ehPost('/jobs/' + jobId + '/like/', btn, function(d) {
     btn.classList.toggle('is-on', !!d.liked);
     btn.title = d.liked ? 'Remove bookmark' : 'Bookmark this job';
+    if (d.liked) {
+      const card = btn.closest('.eh-card');
+      window.showToast(['You have bookmarked ', {b: card.dataset.title}, ' at ', {b: card.dataset.company}], { kind: 'success' });
+    }
   });
 }
 function ehHide(e, jobId, btn) {
@@ -126,6 +130,7 @@ function ehHide(e, jobId, btn) {
   ehPost('/jobs/' + jobId + '/hide/', btn, function(d) {
     if (!d.hidden) return;
     const card = btn.closest('.eh-card');
+    window.showToast(['You have hidden ', {b: card.dataset.title}, ' at ', {b: card.dataset.company}], { kind: 'success' });
     card.style.transition = 'opacity .2s'; card.style.opacity = '0';
     setTimeout(function() { card.remove(); }, 200);
   });

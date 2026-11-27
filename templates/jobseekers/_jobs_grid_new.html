@@ -14,7 +14,7 @@ New-UI card grid for the Jobs For You page (swapped in by _jobs_grid.html when
 </div>
 {% else %}
 <p class="eh-empty">
-  {% if min_match %}No jobs match this threshold. Lower the minimum match filter to see more.
+  {% if min_match %}No jobs in this match level. Try another level or clear the filter to see more.
   {% elif search %}No jobs found for &ldquo;{{ search }}&rdquo;.
   {% elif tab == 'liked' %}You haven't bookmarked any jobs yet.
   {% elif tab == 'hidden' %}You haven't hidden any jobs yet.

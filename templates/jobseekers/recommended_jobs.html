@@ -90,10 +90,10 @@
             {% endif %}
           </button>
           <div id="filters-panel" class="hidden absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 w-80 sm:w-96 p-4">
-            {# Match-score threshold — single-select. Tier boundaries match  #}
-            {# the score badges rendered on each card.                       #}
+            {# Match tier — single-select. Tier boundaries match the score   #}
+            {# badges rendered on each card.                                 #}
             <div class="mb-3">
-              <p class="text-muted text-xs font-medium mb-1.5">Minimum match</p>
+              <p class="text-muted text-xs font-medium mb-1.5">Match level</p>
               <div class="flex flex-wrap gap-1.5" id="min-match-chips">
                 {% for m in min_match_choices %}
                 <button type="button" data-filter="min_match" data-value="{{ m.value }}"
@@ -241,13 +241,16 @@ function ehLike(e, jobId, btn) {
     ehPost('/jobs/' + jobId + '/like/', btn, function(d) {
         btn.classList.toggle('is-on', !!d.liked);
         btn.title = d.liked ? 'Remove bookmark' : 'Bookmark this job';
-        if (!d.liked && currentTab === 'liked') ehRemoveCard(btn.closest('.eh-card'));
+        const card = btn.closest('.eh-card');
+        if (d.liked) window.showToast(['You have bookmarked ', {b: card.dataset.title}, ' at ', {b: card.dataset.company}], { kind: 'success' });
+        if (!d.liked && currentTab === 'liked') ehRemoveCard(card);
     });
 }
 function ehHide(e, jobId, btn) {
     e.preventDefault(); e.stopPropagation();
     ehPost('/jobs/' + jobId + '/hide/', btn, function(d) {
         const card = btn.closest('.eh-card');
+        if (d.hidden) window.showToast(['You have hidden ', {b: card.dataset.title}, ' at ', {b: card.dataset.company}], { kind: 'success' });
         if ((d.hidden && currentTab !== 'hidden') || (!d.hidden && currentTab === 'hidden')) { ehRemoveCard(card); return; }
         btn.classList.toggle('is-on', !!d.hidden);
         btn.title = d.hidden ? 'Unhide this job' : 'Hide this job';

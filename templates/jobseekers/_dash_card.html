@@ -9,6 +9,7 @@ The square next to the title is the company logo (initial letter if none).
 {% endcomment %}
 <a href="/jobs/view/{{ job.id|hashid }}/{% if from_param %}?from={{ from_param }}{% endif %}"
    class="eh-card tier-{{ tier }}{% if app %} is-app{% endif %}{% if job.status == 'closed' and app %} is-closed{% endif %} {{ extra_class }}"
+   data-title="{{ job.title }}" data-company="{{ co.name }}"
    {% if idx != None %}data-page-index="{{ idx }}"{% endif %}>
   <div class="eh-card-bar">
     {% if tier == 'high' %}

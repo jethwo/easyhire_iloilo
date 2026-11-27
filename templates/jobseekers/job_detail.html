@@ -431,6 +431,7 @@
         svg.setAttribute('fill', 'currentColor');
         svg.removeAttribute('stroke'); svg.removeAttribute('stroke-width');
         btn.title = 'Remove bookmark';
+        window.showToast(['You have bookmarked ', {b: '{{ job.title|escapejs }}'}, ' at ', {b: '{{ job.company.name|escapejs }}'}], { kind: 'success' });
       } else {
         btn.classList.add('text-gray-300', 'hover:text-amber');
         btn.classList.remove('text-amber');
@@ -446,6 +447,7 @@
         btn.classList.remove('text-gray-300', 'hover:text-red-400');
         btn.classList.add('text-primary');
         btn.title = 'Unhide this job';
+        window.showToast(['You have hidden ', {b: '{{ job.title|escapejs }}'}, ' at ', {b: '{{ job.company.name|escapejs }}'}], { kind: 'success' });
       } else {
         btn.classList.add('text-gray-300', 'hover:text-red-400');
         btn.classList.remove('text-primary');
