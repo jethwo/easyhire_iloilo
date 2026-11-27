@@ -1,245 +1,139 @@
-{% extends "base/base.html" %}
-{% load static %}
+{% extends "public/_formpage.html" %}
 
 {% block title %}Complete Your Profile — EasyHire{% endblock %}
 
-{% block navbar %}
-    {% include "base/navbar_jobseeker.html" %}
-{% endblock %}
+{% block form_content %}
+<form method="POST" action="/register/info/" id="reg-form">
+  {% csrf_token %}
 
-{% block content %}
-<main class="bg-surface min-h-screen py-6 sm:py-10 px-4 sm:px-6">
+  <div class="eh-fgrid">
 
-    <!-- Header -->
-    <div class="max-w-5xl mx-auto mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-        <div>
-            <p class="text-primary text-base sm:text-lg font-normal">Welcome to</p>
-            <h1 class="font-extrabold text-3xl sm:text-4xl leading-tight">
-                <span class="text-primary">Easy</span><span class="text-teal">Hire</span><span class="text-primary">.</span>
-            </h1>
+    <!-- ── Personal Information ───────────────────────────────── -->
+    <section>
+      <h2 class="eh-h2">Personal Information <small>*Required fields</small></h2>
+
+      <div class="eh-row2">
+        <div class="eh-f">
+          <label class="eh-label" for="first_name">First Name*</label>
+          <input class="eh-input" type="text" name="first_name" id="first_name" required
+                 value="{{ prefill.first_name|default:'' }}" placeholder="Enter your first name." autocomplete="given-name">
         </div>
-        <p class="text-muted text-xs sm:text-sm pb-1">We're going to need a few more things from you.</p>
+        <div class="eh-f">
+          <label class="eh-label" for="middle_name">Middle Name</label>
+          <input class="eh-input" type="text" name="middle_name" id="middle_name"
+                 placeholder="Enter your middle name." autocomplete="off">
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="last_name">Last Name*</label>
+          <input class="eh-input" type="text" name="last_name" id="last_name" required
+                 value="{{ prefill.last_name|default:'' }}" placeholder="Enter your last name." autocomplete="family-name">
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="suffix">Suffix (Jr., Sr., III)</label>
+          <input class="eh-input" type="text" name="suffix" id="suffix" placeholder="Enter your suffix" autocomplete="honorific-suffix">
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="date_of_birth">Date of Birth*</label>
+          <div class="eh-input-wrap">
+            <input class="eh-input" type="text" name="date_of_birth" id="date_of_birth"
+                   data-datepicker="date" data-min-age="18"
+                   placeholder="Select date of birth..." required autocomplete="off" readonly style="cursor:pointer">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <p id="dob_error" class="text-red-500 text-xs mt-1 hidden"></p>
+        </div>
+        <div class="eh-f">
+          <span class="eh-label">Sex*</span>
+          <div class="eh-radios">
+            <label><input type="radio" name="sex" value="M" checked> Male</label>
+            <label><input type="radio" name="sex" value="F"> Female</label>
+          </div>
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="civil_status">Civil Status</label>
+          <select class="eh-input" name="civil_status" id="civil_status">
+            <option value="">Select Civil Status...</option>
+            <option value="single">Single</option>
+            <option value="married">Married</option>
+            <option value="widowed">Widowed</option>
+            <option value="separated">Separated</option>
+            <option value="annulled">Annulled</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Address ────────────────────────────────────────────── -->
+    <section>
+      <h2 class="eh-h2">Address</h2>
+      <div class="eh-row2">
+        <div class="eh-f">
+          <label class="eh-label" for="house_unit">House/Unit No.</label>
+          <input class="eh-input" type="text" name="house_unit" id="house_unit" placeholder="123">
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="street_barangay">Street*</label>
+          <input class="eh-input" type="text" name="street_barangay" id="street_barangay" placeholder="Rizal St.">
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="city_select">City/Municipality</label>
+          <select class="eh-input" name="city_municipality" id="city_select" required>
+            <option value="">Loading cities...</option>
+          </select>
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="barangay_select">Barangay</label>
+          <select class="eh-input" name="barangay" id="barangay_select" required disabled>
+            <option value="">Select City first...</option>
+          </select>
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="province_display">Province</label>
+          <select class="eh-input" id="province_display" disabled><option>Iloilo</option></select>
+          <input type="hidden" name="province" value="Iloilo">
+          <input type="hidden" name="province_code" value="063000000">
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Contact Information ────────────────────────────────── -->
+    <section>
+      <h2 class="eh-h2">Contact Information</h2>
+      <div class="eh-row2">
+        <div class="eh-f">
+          <label class="eh-label" for="phone">Phone Number (+63)*</label>
+          <div class="eh-input-wrap">
+            <span class="pre">+63</span>
+            <input class="eh-input has-pre" type="tel" name="phone" id="phone" required placeholder="9XX XXX XXXX" maxlength="13">
+          </div>
+          <p id="phone_error" class="text-red-500 text-xs mt-1 hidden">Enter a valid 11-digit PH number (e.g. 09171234567).</p>
+        </div>
+        <div class="eh-f">
+          <label class="eh-label" for="contact_email">Email Address*</label>
+          <input class="eh-input" type="email" name="contact_email" id="contact_email" required
+                 placeholder="youremail@gmail.com" value="{{ session_email|default:'' }}">
+          <p class="eh-note">Input an active email address for further communication with potential Employers.</p>
+          <p id="email_error" class="text-red-500 text-xs mt-1 hidden">Enter a valid email address.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Actions ────────────────────────────────────────────── -->
+    <div class="eh-formbtns" style="margin-top:2.4rem">
+      {# Cancel and log out — for users who got here via Google auth (or step 1) #}
+      {# and want to bail. Posts through the hidden form below.                  #}
+      <button type="button" class="eh-btn eh-btn-red"
+              onclick="if (confirm('Cancel this registration and log out? Anything you've typed here will be discarded.')) { document.getElementById('cancel-logout-form').submit(); }">
+        Cancel &amp; Logout
+      </button>
+      <button type="submit" id="submit-btn" class="eh-btn">Confirm and Proceed</button>
     </div>
 
-    <!-- Form Card -->
-    <div class="max-w-5xl mx-auto bg-white border border-gray-200 rounded-2xl px-4 sm:px-6 md:px-10 py-6 md:py-10 shadow-sm">
-        <form method="POST" action="/register/info/" id="reg-form">
-            {% csrf_token %}
+  </div>
+</form>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 md:gap-x-14 gap-y-6">
-
-                <!-- ── LEFT: Personal Information ─────────────────── -->
-                <div>
-                    <div class="flex items-baseline gap-3 mb-5">
-                        <h2 class="font-bold text-primary text-base">Personal Information</h2>
-                        <span class="text-muted text-xs">*Required fields</span>
-                    </div>
-
-                    <!-- First Name | Middle Name -->
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <label class="block text-primary text-xs font-medium mb-1">First Name*</label>
-                            <input type="text" name="first_name" id="first_name" required
-                                   value="{{ prefill.first_name|default:'' }}"
-                                   placeholder="Juan"
-                                   autocomplete="given-name"
-                                   class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-                        </div>
-                        <div>
-                            <label class="block text-primary text-xs font-medium mb-1">Middle Name</label>
-                            <input type="text" name="middle_name" id="middle_name"
-                                   placeholder="Santos"
-                                   autocomplete="off"
-                                   class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-                        </div>
-                    </div>
-
-                    <!-- Last Name | Suffix -->
-                    <div class="grid grid-cols-5 gap-3 mb-4">
-                        <div class="col-span-3">
-                            <label class="block text-primary text-xs font-medium mb-1">Last Name*</label>
-                            <input type="text" name="last_name" id="last_name" required
-                                   value="{{ prefill.last_name|default:'' }}"
-                                   placeholder="Dela Cruz"
-                                   autocomplete="family-name"
-                                   class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-                        </div>
-                        <div class="col-span-2">
-                            <label class="block text-primary text-xs font-medium mb-1">Suffix</label>
-                            <input type="text" name="suffix" placeholder="Jr./Sr./III"
-                                   autocomplete="honorific-suffix"
-                                   class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-                        </div>
-                    </div>
-
-                    <!-- Civil Status -->
-                    <div class="mb-4">
-                        <label class="block text-primary text-xs font-medium mb-1">Civil Status</label>
-                        <select name="civil_status"
-                                class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary focus:outline-none focus:border-teal transition appearance-none">
-                            <option value="">Select Civil Status...</option>
-                            <option value="single">Single</option>
-                            <option value="married">Married</option>
-                            <option value="widowed">Widowed</option>
-                            <option value="separated">Separated</option>
-                            <option value="annulled">Annulled</option>
-                        </select>
-                    </div>
-
-                    <!-- Sex | Date of Birth -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-primary text-xs font-medium mb-2">Sex*</label>
-                            <div class="flex items-center gap-5 py-1">
-                                <label class="flex items-center gap-2 text-sm text-primary cursor-pointer">
-                                    <input type="radio" name="sex" value="M" checked class="accent-teal w-4 h-4">
-                                    Male
-                                </label>
-                                <label class="flex items-center gap-2 text-sm text-primary cursor-pointer">
-                                    <input type="radio" name="sex" value="F" class="accent-teal w-4 h-4">
-                                    Female
-                                </label>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-primary text-xs font-medium mb-1">Date of Birth*</label>
-                            <div class="relative">
-                                <input type="text" name="date_of_birth" id="date_of_birth"
-                                       data-datepicker="date" data-min-age="18"
-                                       placeholder="Select Date of Birth" required autocomplete="off" readonly
-                                       class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition cursor-pointer">
-                                <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                            </div>
-                            <p id="dob_error" class="text-red-500 text-xs mt-1 hidden"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ── RIGHT: Address + Contact ───────────────────── -->
-                <div>
-                    <h2 class="font-bold text-primary text-base mb-5">Address</h2>
-
-                    <!-- House/Unit | Street -->
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <label class="block text-primary text-xs font-medium mb-1">House/Unit No.</label>
-                            <input type="text" name="house_unit" placeholder="123"
-                                   class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-                        </div>
-                        <div>
-                            <label class="block text-primary text-xs font-medium mb-1">Street*</label>
-                            <input type="text" name="street_barangay" placeholder="Rizal St."
-                                   class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-                        </div>
-                    </div>
-
-                    <!-- City/Municipality -->
-                    <div class="mb-4">
-                        <label class="block text-primary text-xs font-medium mb-1">City/Municipality</label>
-                        <div class="relative">
-                            <select name="city_municipality" id="city_select" required
-                                    class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary focus:outline-none focus:border-teal transition appearance-none">
-                                <option value="">Loading cities...</option>
-                            </select>
-                            <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Barangay -->
-                    <div class="mb-4">
-                        <label class="block text-primary text-xs font-medium mb-1">Barangay</label>
-                        <div class="relative">
-                            <select name="barangay" id="barangay_select" required disabled
-                                    class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary focus:outline-none focus:border-teal transition appearance-none disabled:opacity-50 disabled:cursor-not-allowed">
-                                <option value="">Select City first...</option>
-                            </select>
-                            <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Province (locked) -->
-                    <div class="mb-6">
-                        <label class="block text-primary text-xs font-medium mb-1">Province</label>
-                        <div class="relative">
-                            <select disabled
-                                    class="w-full bg-gray-50 border border-gray-200 rounded-full px-4 py-2.5 text-sm text-muted cursor-not-allowed appearance-none">
-                                <option>Iloilo</option>
-                            </select>
-                            <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </div>
-                        <input type="hidden" name="province" value="Iloilo">
-                        <input type="hidden" name="province_code" value="063000000">
-                    </div>
-
-                    <!-- Contact Information -->
-                    <h2 class="font-bold text-primary text-base mb-5">Contact Information</h2>
-
-                    <!-- Phone | Email side by side -->
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-primary text-xs font-medium mb-1">Phone*</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted select-none">+63</span>
-                                <input type="tel" name="phone" id="phone" required
-                                       placeholder="9XX XXX XXXX"
-                                       maxlength="13"
-                                       class="w-full bg-white border border-gray-200 rounded-full pl-12 pr-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-                            </div>
-                            <p id="phone_error" class="text-red-500 text-xs mt-1 hidden">Enter a valid 11-digit PH number (e.g. 09171234567).</p>
-                        </div>
-                        <div>
-                            <label class="block text-primary text-xs font-medium mb-1">Email Address*</label>
-                            <input type="email" name="contact_email" id="contact_email" required
-                                   placeholder="youremail@gmail.com"
-                                   value="{{ session_email|default:'' }}"
-                                   class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-                            <p class="text-muted text-[11px] mt-1">This is where Employers will be redirected for further communication.</p>
-                            <p id="email_error" class="text-red-500 text-xs mt-1 hidden">Enter a valid email address.</p>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Submit row -->
-            <div class="flex items-center justify-between mt-10 pt-6 border-t border-gray-100 gap-3 flex-wrap">
-                {# Cancel and log out — for users who got here via Google auth   #}
-                {# (or step-1) and now want to bail. type="button" + confirm() so #}
-                {# they don't nuke half-typed answers by accident. The actual    #}
-                {# POST goes through the hidden #cancel-logout-form below.      #}
-                <button type="button"
-                        onclick="if (confirm('Cancel this registration and log out? Anything you\'ve typed here will be discarded.')) { document.getElementById('cancel-logout-form').submit(); }"
-                        class="text-red-500 text-sm font-semibold hover:text-red-600 transition">
-                    Cancel &amp; Log Out
-                </button>
-                <button type="submit" id="submit-btn"
-                        class="bg-amber text-white font-semibold px-10 py-3 rounded-full hover:bg-amber/90 transition text-sm">
-                    Confirm &amp; Submit
-                </button>
-            </div>
-
-        </form>
-
-        {# Hidden form for the Cancel & Log Out button. Sits outside the      #}
-        {# main #reg-form because HTML forbids nested <form> elements.        #}
-        <form id="cancel-logout-form" method="POST" action="/logout/" class="hidden">
-            {% csrf_token %}
-        </form>
-    </div>
-</main>
-
-{% endblock %}
-
-{% block footer %}
-    {% include "base/footer.html" %}
+{# Hidden form for Cancel & Logout (HTML forbids nested forms). #}
+<form id="cancel-logout-form" method="POST" action="/logout/" style="display:none">{% csrf_token %}</form>
 {% endblock %}
 
 {% block extra_scripts %}

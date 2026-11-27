@@ -199,10 +199,16 @@
       opts.kind === 'warning' ? 'warning' :
       'briefcase'
     );
+    // `text` is a plain string, or an array of parts where a string is plain
+    // text and {b: '...'} is bolded — e.g. ['Bookmarked ', {b: job.title}].
+    // Every part is escaped either way.
+    const titleHtml = Array.isArray(text)
+      ? text.map(function(p) { return typeof p === 'string' ? escapeText(p) : '<b>' + escapeText(p.b) + '</b>'; }).join('')
+      : escapeText(text);
     el.innerHTML =
       '<span class="notif-toast-icon">' + iconFor(iconSlug) + '</span>' +
       '<div class="notif-toast-body">' +
-        '<p class="notif-toast-title">' + escapeText(text) + '</p>' +
+        '<p class="notif-toast-title">' + titleHtml + '</p>' +
       '</div>' +
       '<button type="button" class="notif-toast-close" aria-label="Dismiss">' +
         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">' +

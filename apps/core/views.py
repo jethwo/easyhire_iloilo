@@ -154,6 +154,7 @@ def inbox(request):
                 'actor': sender_company_name,
                 'sender_company_name': sender_company_name,
                 'sender_company_url':  sender_company_url,
+                'sender_company_verified': bool(contact.company.is_verified),
                 'sender_job_title':    sender_job_title,
                 'sender_job_url':      sender_job_url,
                 'verb': verb,
@@ -213,6 +214,7 @@ def inbox(request):
                 'actor': inv_company_name,
                 'sender_company_name': inv_company_name,
                 'sender_company_url':  inv_company_url,
+                'sender_company_verified': bool(inv.company and inv.company.is_verified),
                 'sender_job_title':    inv_job_title,
                 'sender_job_url':      inv_job_url,
                 'verb': (f'invited you to apply for "{inv_job_title}".'

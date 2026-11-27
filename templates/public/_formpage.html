@@ -1,0 +1,28 @@
+{% extends "base/base.html" %}
+{% load static asset_tags %}
+{% comment %}
+Layout for the "new UI" data-entry pages (profile step, employer company step).
+Gives them: the public navbar, the big EasyHire logo, a cream page and the footer
+with both seals. Child templates fill:
+  {% block title %}  {% block logo_suffix %} (optional text after the logo)
+  {% block form_content %}   the page body
+  {% block extra_scripts %}  page scripts
+Styling: "Form pages" section of static/css/public.css.
+{% endcomment %}
+
+{% block extra_head %}<link rel="stylesheet" href="{% static_v 'css/public.css' %}">{% endblock %}
+{% block body_class %}eh-public eh-formview{% endblock %}
+{% block navbar %}{% include "public/_nav.html" %}{% endblock %}
+
+{% block content %}
+<main class="eh-formpage">
+  <div class="eh-formlogo">
+    <img src="{% static 'images/logo-01.png' %}" alt="">
+    <span class="word"><span class="easy">Easy</span><span class="hire">Hire</span></span>
+    {% block logo_suffix %}{% endblock %}
+  </div>
+  {% block form_content %}{% endblock %}
+</main>
+{% endblock %}
+
+{% block footer %}{% include "public/_footer.html" with seals=True %}{% endblock %}

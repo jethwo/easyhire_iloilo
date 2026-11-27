@@ -8,6 +8,21 @@ from django.utils import timezone
 from .models import User
 
 
+# LANDING
+
+@never_cache
+def landing(request):
+    """Public landing page at '/'. Signed-in users skip it and go straight to
+    their own dashboard (same routing as the login views)."""
+    if request.user.is_authenticated:
+        if request.user.is_staff:
+            return redirect('/admin-panel/')
+        if request.user.is_employer:
+            return redirect('/employers/dashboard/')
+        return redirect('/dashboard/')
+    return render(request, 'public/landing_jobseeker.html')
+
+
 # JOBSEEKER
 
 @method_decorator(never_cache, name='dispatch')

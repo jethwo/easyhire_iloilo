@@ -1,0 +1,23 @@
+{% load match_tags %}
+{% comment %}
+New-UI card grid for the Jobs For You page (swapped in by _jobs_grid.html when
+`new_cards` is set). Same data as the old grid: ranked_jobs = [{job, score}].
+{% endcomment %}
+{% if ranked_jobs %}
+<div class="eh-cards">
+  {% for item in ranked_jobs %}
+    {% if item.score is None %}{% include "jobseekers/_dash_card.html" with job=item.job co=item.job.company tier="none" from_param=from_param|default:"recommended" %}
+    {% elif item.score >= 85 %}{% include "jobseekers/_dash_card.html" with job=item.job co=item.job.company tier="high" from_param=from_param|default:"recommended" %}
+    {% elif item.score >= 65 %}{% include "jobseekers/_dash_card.html" with job=item.job co=item.job.company tier="rec" from_param=from_param|default:"recommended" %}
+    {% else %}{% include "jobseekers/_dash_card.html" with job=item.job co=item.job.company tier="none" from_param=from_param|default:"recommended" %}{% endif %}
+  {% endfor %}
+</div>
+{% else %}
+<p class="eh-empty">
+  {% if min_match %}No jobs in this match level. Try another level or clear the filter to see more.
+  {% elif search %}No jobs found for &ldquo;{{ search }}&rdquo;.
+  {% elif tab == 'liked' %}You haven't bookmarked any jobs yet.
+  {% elif tab == 'hidden' %}You haven't hidden any jobs yet.
+  {% else %}No open jobs available right now. Check back soon!{% endif %}
+</p>
+{% endif %}

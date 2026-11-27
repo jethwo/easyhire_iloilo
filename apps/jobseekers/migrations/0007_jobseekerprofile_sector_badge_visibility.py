@@ -1,5 +1,12 @@
 from django.db import migrations, models
 
+from apps.core.migration_helpers import add_column
+
+
+def _add_sector_badge_visibility(apps, schema_editor):
+    add_column(schema_editor, 'jobseeker_profiles', 'sector_badge_visibility',
+               'VARCHAR(20)', default='public')
+
 
 class Migration(migrations.Migration):
 
@@ -17,18 +24,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             database_operations=[
-                migrations.RunSQL(
-                    sql="""
-                        ALTER TABLE jobseeker_profiles
-                            ADD COLUMN IF NOT EXISTS sector_badge_visibility VARCHAR(20) DEFAULT 'public';
-                        UPDATE jobseeker_profiles
-                           SET sector_badge_visibility = 'public'
-                         WHERE sector_badge_visibility IS NULL;
-                        ALTER TABLE jobseeker_profiles
-                            ALTER COLUMN sector_badge_visibility SET DEFAULT 'public';
-                    """,
-                    reverse_sql=migrations.RunSQL.noop,
-                ),
+                migrations.RunPython(_add_sector_badge_visibility, migrations.RunPython.noop),
             ],
         ),
     ]

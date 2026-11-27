@@ -12,9 +12,7 @@ register_converter(HashidConverter, 'hashid')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
-    # Root takes everyone straight to the jobseeker sign-in. Already-logged-in
-    # users get bounced to their dashboard by JobseekerLoginView.
-    path('', RedirectView.as_view(url='/login/', permanent=False), name='landing'),
+    # Root ('/') is the public landing page — served by apps.accounts.views.landing.
     path('about/',   TemplateView.as_view(template_name='public/about.html'),   name='about'),
     path('terms/',   TemplateView.as_view(template_name='public/terms.html'),   name='terms'),
     path('privacy/', TemplateView.as_view(template_name='public/privacy.html'), name='privacy'),

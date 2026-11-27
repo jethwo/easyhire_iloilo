@@ -1,0 +1,538 @@
+/* ==========================================================================
+   EasyHire — public pages (landing, jobseeker sign-in, jobseeker register)
+   --------------------------------------------------------------------------
+   Plain CSS on purpose: no dependency on the Tailwind CDN, so these pages
+   look right even on a flaky connection. All brand colors live in the
+   :root variables below — retheme here, not in the templates.
+
+   Layout is driven by two things on <body class="eh-public ...">:
+     .eh-view-landing  → narrow cream wave, "for Jobseekers / Employers…"
+     .eh-view-auth     → wide cream wave holding a form (sign-in/register)
+   ========================================================================== */
+
+:root {
+  /* Main colors */
+  --eh-blue:      #082C84;
+  --eh-sky:       #6CB9E3;
+  /* Secondary colors */
+  --eh-green:     #69C99D;   /* "for Jobseekers" accent */
+  --eh-mint:      #B5DBAC;
+  --eh-red:       #E85252;   /* "for Employers" accent  */
+  --eh-slate:     #1B3B5A;
+  --eh-cream:     #F9F9E3;
+  /* Derived */
+  --eh-navy:      #0A1F55;   /* buttons + footer */
+  --eh-cream-dk:  #ECEBBD;   /* input borders, Google button */
+
+  --eh-nav-h:     57px;
+  --eh-ctl:       0.75;      /* size of buttons + text fields (1 = original mockup size) */
+}
+
+body.eh-public {
+  margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--eh-cream);
+  color: var(--eh-blue);
+}
+:where(.eh-public) a { color: inherit; text-decoration: none; }
+
+/* ---------- Top navbar ---------------------------------------------------- */
+.eh-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  height: var(--eh-nav-h);
+  background: var(--eh-cream);
+  box-shadow: 0 2px 4px rgba(0,0,0,.18);
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: 0 2.5rem;
+}
+.eh-nav-links { display: flex; align-items: center; gap: 2.75rem; font-size: .9rem; }
+.eh-nav-links a { color: var(--eh-blue); padding: .25rem .5rem; transition: opacity .15s; }
+.eh-nav-links a:hover { opacity: .65; }
+.eh-nav-links a.is-strong { font-weight: 700; }
+.eh-nav-toggle {
+  display: none; background: none; border: 0; padding: .5rem; cursor: pointer;
+  color: var(--eh-blue); margin-left: auto;
+}
+.eh-nav-menu {
+  display: none; position: absolute; top: var(--eh-nav-h); left: 0; right: 0;
+  background: var(--eh-cream); box-shadow: 0 4px 6px rgba(0,0,0,.15);
+  flex-direction: column; padding: .5rem 1.25rem 1rem;
+}
+.eh-nav-menu.is-open { display: flex; }
+.eh-nav-menu a { padding: .7rem 0; font-size: .95rem; border-bottom: 1px solid rgba(8,44,132,.1); }
+
+/* ---------- Hero (blue photo + cream wave) -------------------------------- */
+.eh-hero {
+  position: relative;
+  margin-top: var(--eh-nav-h);
+  flex: none; height: calc(100vh - var(--eh-nav-h)); height: calc(100dvh - var(--eh-nav-h)); min-height: 470px;   /* hero = exactly one screen; footer sits below the fold */
+  background: var(--eh-blue) url('../images/cityhall-background 1.png') center / cover no-repeat;
+  overflow: hidden;
+}
+
+/* Form views are taller than the landing view — give them room. */
+
+
+/* Cream wave on the right. Image is stretched to fill so it always meets the
+   top and bottom of the hero; width changes per view. */
+.eh-wave {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  background: url('../images/Vector 1.png') left top / 100% 100% no-repeat;
+  z-index: 1;
+}
+.eh-view-landing .eh-wave { width: 33%; }
+.eh-view-auth    .eh-wave { width: 44%; }
+
+/* Partner seals, top-left of the hero */
+.eh-seals { position: absolute; top: clamp(1rem, 3.5vh, 2.5rem); left: 0; right: 0; z-index: 2; pointer-events: none; }
+.eh-seal {
+  position: absolute; top: 0; width: clamp(64px, 9vh, 100px); height: clamp(64px, 9vh, 100px); border-radius: 9999px;
+  background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.3); object-fit: contain;
+}
+.eh-seal-city { left: 70px; }
+.eh-seal-peso { left: 44.5%; }
+
+/* Left column: brand + CTA buttons */
+.eh-hero-left {
+  position: absolute; top: 0; bottom: 0; left: 16.5%; max-width: 38%;
+  display: flex; flex-direction: column; justify-content: center;
+  padding-top: 4vh;
+  color: var(--eh-cream);
+}
+.eh-brand { display: flex; align-items: center; gap: .25rem; }
+.eh-brand img { width: clamp(80px, 11vh, 130px); height: auto; margin-left: -.5rem; }
+.eh-brand-word { font-size: clamp(3rem, 7.5vh, 5rem); font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+.eh-brand-word .easy { color: var(--eh-sky); }
+.eh-brand-word .hire { color: var(--eh-cream); }
+.eh-tagline { margin: .5rem 0 clamp(1rem, 3.5vh, 2.25rem); font-size: 1.6rem; line-height: 1.12; font-weight: 300; max-width: 26rem; }
+.eh-tagline strong { font-weight: 700; }
+
+.eh-cta {
+  display: flex; align-items: center; justify-content: center; gap: .85rem;
+  width: 100%; max-width: calc(388px * var(--eh-ctl)); height: calc(clamp(48px, 6.8vh, 73px) * var(--eh-ctl)); margin-bottom: clamp(.8rem, 2.2vh, 1.8rem);
+  background: var(--eh-cream); color: var(--eh-blue);
+  font-size: calc(1.3rem * var(--eh-ctl)); font-weight: 400;
+  box-shadow: 0 3px 6px rgba(0,0,0,.28);
+  transition: transform .15s, box-shadow .15s;
+}
+.eh-cta strong { font-weight: 700; }
+.eh-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 10px rgba(0,0,0,.3); }
+.eh-cta svg { width: calc(30px * var(--eh-ctl)); height: calc(30px * var(--eh-ctl)); flex-shrink: 0; }
+
+/* Right column content (inside the wave) */
+.eh-hero-right {
+  position: absolute; top: 0; bottom: 0; right: 0; z-index: 2;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.eh-view-landing .eh-hero-right { left: 78.5%; right: 1rem; }
+.eh-view-auth    .eh-hero-right { left: 70.5%; right: 5%; }
+
+.eh-for { margin: 0; font-size: clamp(1.9rem, 4.2vh, 2.65rem); line-height: 1.02; font-weight: 700; letter-spacing: -.03em; color: var(--eh-slate); }
+.eh-for em { font-style: italic; }
+.eh-for .who { color: var(--eh-sky); font-weight: 500; }
+
+/* ---------- Auth panel ---------------------------------------------------- */
+.eh-greet { font-size: clamp(2.2rem, 4.6vh, 3.3rem); font-weight: 700; letter-spacing: -.03em; color: var(--eh-blue); margin: 0 0 .5rem; line-height: 1.05; text-align: center; }
+.eh-view-register .eh-greet,
+.eh-view-signin-form .eh-greet { text-align: left; font-size: clamp(2.2rem, 4.6vh, 3.3rem); margin-bottom: clamp(.4rem, 1.5vh, 1.1rem); }
+.eh-switch { font-size: .85rem; color: var(--eh-slate); text-align: center; margin: 0 0 1.5rem; }
+.eh-switch a { text-decoration: underline; }
+.eh-view-register .eh-switch,
+.eh-view-signin-form .eh-switch { text-align: left; }
+
+.eh-actions { width: calc(387px * var(--eh-ctl)); max-width: 100%; margin: 1.5rem auto 0; display: flex; flex-direction: column; gap: clamp(.7rem, 1.8vh, 1.3rem); }
+.eh-btn {
+  display: flex; align-items: center; justify-content: center; gap: .75rem;
+  height: calc(clamp(48px, 6.8vh, 73px) * var(--eh-ctl)); width: 100%; border: 0; cursor: pointer;
+  background: var(--eh-navy); color: var(--eh-cream);
+  font: inherit; font-size: calc(1.3rem * var(--eh-ctl));
+  box-shadow: 0 3px 6px rgba(0,0,0,.28);
+  transition: transform .15s, box-shadow .15s;
+}
+.eh-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 10px rgba(0,0,0,.3); }
+.eh-btn-google { background: var(--eh-cream-dk); color: var(--eh-slate); height: calc(clamp(44px, 6.2vh, 66px) * var(--eh-ctl)); }
+.eh-btn svg { width: calc(30px * var(--eh-ctl)); height: calc(30px * var(--eh-ctl)); }
+
+.eh-alert { font-size: .85rem; padding: .7rem .9rem; margin: 0 0 1rem; background: #fde8e8; color: #b42323; }
+.eh-alert.is-warn { background: #fff4d6; color: var(--eh-slate); }
+.eh-alert a { font-weight: 700; text-decoration: underline; }
+
+.eh-form { width: 100%; }
+.eh-label { display: block; font-size: calc(1.05rem * var(--eh-ctl)); color: var(--eh-slate); margin: clamp(.2rem, .8vh, .5rem) 0 .1rem; }
+.eh-input {
+  display: block; width: 100%; box-sizing: border-box; height: calc(clamp(38px, 5vh, 54px) * var(--eh-ctl)); padding: 0 calc(1rem * var(--eh-ctl));
+  background: var(--eh-cream); border: 2px solid var(--eh-cream-dk); border-radius: 0;
+  font: inherit; font-size: calc(1rem * var(--eh-ctl)); color: var(--eh-slate);
+}
+.eh-input:focus { outline: none; border-color: var(--eh-sky); }
+.eh-small { font-size: .9rem; color: var(--eh-blue); margin: .4rem 0 0; }
+.eh-small a { text-decoration: underline; }
+.eh-small.right { text-align: right; }
+.eh-consent { display: flex; align-items: flex-start; gap: .75rem; margin: clamp(.6rem, 1.8vh, 1.4rem) 0 0 .25rem; font-size: .95rem; color: var(--eh-slate); line-height: 1.25; }
+.eh-consent input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--eh-blue); flex-shrink: 0; }
+.eh-consent strong { font-weight: 700; }
+.eh-submit { width: calc(387px * var(--eh-ctl)); max-width: 100%; margin: clamp(1rem, 3vh, 2.6rem) auto 0; }
+.eh-greet-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.eh-greet-row .eh-greet { flex: 1; margin: 0 0 clamp(.4rem, 1.5vh, 1.1rem); }
+.eh-greet-row .eh-back { flex: none; }
+.eh-back { background: none; border: 0; cursor: pointer; color: var(--eh-blue); font: inherit; font-size: .95rem; padding: .25rem 0; text-decoration: underline; }
+.eh-back:hover { opacity: .65; }
+.eh-linkrow { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; margin-top: .45rem; font-size: .8rem; color: var(--eh-blue); }
+.eh-linkrow a { text-decoration: underline; white-space: nowrap; }
+.eh-btn-cream { background: var(--eh-cream); color: var(--eh-blue); }
+.eh-back:hover { text-decoration: underline; }
+
+/* ---------- Footer -------------------------------------------------------- */
+.eh-footer { background: var(--eh-navy); color: var(--eh-cream); height: clamp(110px, 13vh, 150px); padding: clamp(1.5rem, 4vh, 2.75rem) 5rem 0 0; box-sizing: border-box; }
+.eh-footer-inner { display: flex; justify-content: flex-end; gap: 6.5rem; padding-right: 3rem; font-size: .95rem; }
+.eh-footer a { color: var(--eh-cream); opacity: .95; }
+.eh-footer a:hover { text-decoration: underline; }
+.eh-footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+.eh-footer h4 { margin: 0 0 .3rem; font-size: .95rem; font-weight: 700; }
+.eh-footer .social { display: flex; gap: 1rem; margin-top: .6rem; }
+.eh-footer .social svg { width: 22px; height: 22px; fill: currentColor; }
+
+/* ---------- Responsive ---------------------------------------------------- */
+@media (max-width: 1400px) {
+  .eh-tagline { font-size: 1.35rem; }
+  .eh-for { font-size: 2.2rem; }
+
+}
+@media (max-width: 1100px) {
+  .eh-hero-left { left: 8%; max-width: 50%; }
+}
+
+/* Mobile / tablet: stack. Blue photo on top, cream panel below. */
+@media (max-width: 860px) {
+  .eh-nav { padding: 0 1rem; }
+  .eh-nav-links { display: none; }
+  .eh-nav-toggle { display: block; }
+
+  body.eh-public { display: block; }
+  .eh-hero { height: auto; min-height: 0; display: flex; flex-direction: column; }
+  .eh-wave { display: none; }
+  .eh-seals { position: static; display: flex; gap: .75rem; padding: 1.25rem 1.25rem 0; }
+  .eh-seal { position: static; width: 64px; height: 64px; }
+  .eh-hero-left { position: relative; left: auto; top: auto; bottom: auto; padding: 1.5rem 1.25rem 2rem; max-width: none; }
+  .eh-brand img { width: 72px; }
+  .eh-brand-word { font-size: 2.6rem; }
+  .eh-tagline { font-size: 1.15rem; margin-bottom: 1.5rem; }
+  .eh-cta { height: calc(58px * var(--eh-ctl)); max-width: none; font-size: 1.05rem; margin-bottom: 1rem; }
+
+  .eh-hero-right,
+  .eh-view-landing .eh-hero-right,
+  .eh-view-auth .eh-hero-right {
+    position: static; left: auto; width: auto; right: auto; padding: 2rem 1.25rem 2.5rem;
+    background: var(--eh-cream);
+  }
+  .eh-for { font-size: 2rem; }
+  .eh-greet, .eh-view-register .eh-greet, .eh-view-signin-form .eh-greet { font-size: 2.1rem; }
+  .eh-btn { height: calc(58px * var(--eh-ctl)); font-size: calc(1.1rem * var(--eh-ctl)); }
+  .eh-actions, .eh-submit { width: 100%; }
+  .eh-footer { height: auto; padding: 2rem 1.25rem; }
+  .eh-footer-inner { justify-content: flex-start; gap: 3rem; padding-right: 0; }
+}
+
+/* ---------- Page-to-page pulse ---------------------------------------------
+   Cross-document view transition (Chrome/Edge/Safari 18+): the cream wave
+   morphs between landing width and form width when you navigate. Browsers
+   without support just get the load animations below. */
+@view-transition { navigation: auto; }
+.eh-wave        { view-transition-name: eh-wave; }
+.eh-hero-right  { view-transition-name: eh-panel; }
+::view-transition-group(eh-wave) { animation-duration: .55s; animation-timing-function: cubic-bezier(.65,0,.35,1); }
+::view-transition-old(eh-panel)  { animation: eh-fade-out .15s ease both; }
+::view-transition-new(eh-panel)  { animation: eh-fade-in .35s .2s ease both; }
+@keyframes eh-fade-out { to { opacity: 0; } }
+@keyframes eh-fade-in  { from { opacity: 0; transform: translateY(6px); } }
+
+/* Small pulse on the wave edge each time a page loads */
+.eh-wave { transform-origin: right center; animation: eh-pulse .7s ease-out; }
+@keyframes eh-pulse {
+  0%   { transform: scaleX(.94); }
+  60%  { transform: scaleX(1.02); }
+  100% { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eh-wave { animation: none; }
+  @view-transition { navigation: none; }
+}
+
+/* ---------- Hover: the cream/blue boundary follows the pointer --------------
+   An invisible vertical line runs through the PESO seal. _shell.html sets
+   data-side on .eh-hero from the pointer position:
+     left of the seal  (blue side)  → blue grows right: wave + its content slide right
+     right of the seal (cream side) → cream grows left, but stops just short of
+                                      the seal so it never overlaps it
+   Desktop only (the layout stacks below 860px). */
+.eh-wave       { transition: width .5s cubic-bezier(.65,0,.35,1), transform .5s cubic-bezier(.65,0,.35,1); }
+.eh-hero-right { transition: transform .5s cubic-bezier(.65,0,.35,1); }
+
+@media (min-width: 861px) {
+  .eh-hero[data-side="left"] .eh-wave,
+  .eh-hero[data-side="left"] .eh-hero-right { transform: translateX(4vw); }
+
+  /* seal's right edge ≈ 49.6% of the width → leave a small gap */
+  .eh-hero[data-side="right"] .eh-wave { width: 48.5%; }
+}
+
+/* In-page navigation: panel content fades out/in while it's swapped */
+.eh-hero-right > * { transition: opacity .16s ease; }
+.eh-hero-right.is-swapping > * { opacity: 0; }
+
+/* ==========================================================================
+   Form pages (profile / registration step 2) — see public/_formpage.html
+   ========================================================================== */
+.eh-formpage { --eh-ctl: .85; flex: 1; margin-top: var(--eh-nav-h); padding: 2.75rem 6% 3.5rem; }
+.eh-formlogo { display: flex; align-items: center; margin: 0 0 1.75rem -.6rem; }
+.eh-formlogo img { width: 124px; height: auto; }
+.eh-formlogo .word { font-size: 4.2rem; font-weight: 700; letter-spacing: -.03em; line-height: 1; margin-left: -.25rem; }
+.eh-formlogo .easy { color: var(--eh-sky); }
+.eh-formlogo .hire { color: var(--eh-blue); }
+.eh-formlogo .for  { font-size: 1.1rem; font-weight: 400; letter-spacing: 0; color: var(--eh-slate); margin-left: 1rem; align-self: flex-end; padding-bottom: .5rem; }
+
+.eh-fgrid  { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem 5rem; align-items: start; }
+.eh-h2     { margin: 0 0 .9rem; font-size: 1.05rem; font-weight: 700; color: var(--eh-blue); }
+.eh-h2 small { font-weight: 400; font-size: .8rem; color: var(--eh-slate); margin-left: .6rem; }
+.eh-row2   { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem 1.5rem; margin-bottom: .9rem; }
+.eh-row3   { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem 1.5rem; margin-bottom: .9rem; }
+.eh-row4   { display: grid; grid-template-columns: repeat(4, 1fr); gap: .9rem 1.5rem; margin-bottom: .9rem; }
+.eh-f      { min-width: 0; margin-bottom: .9rem; }
+.eh-row2 > .eh-f, .eh-row3 > .eh-f, .eh-row4 > .eh-f { margin-bottom: 0; }
+.eh-f .eh-label { margin-top: 0; }
+.eh-note   { font-size: .75rem; color: var(--eh-blue); margin: .3rem 0 0; line-height: 1.3; }
+.eh-input::placeholder { color: rgba(27,59,90,.4); }
+.eh-input:disabled, .eh-input[readonly]:not([data-datepicker]) { background: var(--eh-cream-dk); color: rgba(27,59,90,.7); cursor: not-allowed; }
+select.eh-input {
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231B3B5A' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem;
+}
+.eh-input-wrap { position: relative; }
+.eh-input-wrap .pre  { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-size: calc(1rem * var(--eh-ctl)); color: var(--eh-slate); pointer-events: none; }
+.eh-input-wrap .eh-input.has-pre { padding-left: 3.1rem; }
+.eh-input-wrap svg { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--eh-slate); pointer-events: none; }
+.eh-radios { display: flex; gap: 2.5rem; align-items: center; height: calc(clamp(38px, 5vh, 54px) * var(--eh-ctl)); }
+.eh-radios label, .eh-checks label, .eh-check { display: inline-flex; align-items: center; gap: .55rem; font-size: calc(1.05rem * var(--eh-ctl)); color: var(--eh-slate); cursor: pointer; }
+.eh-radios input, .eh-checks input, .eh-check input { width: 17px; height: 17px; accent-color: var(--eh-blue); }
+.eh-checks { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem 1.25rem; }
+.eh-check  { margin-top: .6rem; align-items: flex-start; line-height: 1.25; }
+.eh-check input { margin-top: 2px; flex-shrink: 0; }
+
+.eh-formbtns { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+.eh-formbtns .eh-btn { width: 100%; font-size: calc(1.3rem * var(--eh-ctl)); }
+.eh-btn-red { background: var(--eh-cream-dk); color: var(--eh-red); font-weight: 700; }
+.eh-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+.eh-formerr { background: #fde8e8; color: #b42323; font-size: .9rem; padding: .7rem 1rem; margin-bottom: 1rem; max-width: 40rem; }
+.eh-formpage .hidden { display: none; }
+
+@media (max-width: 1000px) {
+  .eh-fgrid { grid-template-columns: 1fr; }
+  .eh-row4 { grid-template-columns: 1fr 1fr; }
+  .eh-row3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 860px) {
+  .eh-formpage { padding: 1.75rem 1.25rem 2.5rem; }
+  .eh-formlogo .word { font-size: 2.8rem; }
+  .eh-formlogo img { width: 84px; }
+  .eh-formbtns { grid-template-columns: 1fr; }
+}
+
+/* Footer variant with the two seals on the left (form + dashboard pages) */
+.eh-footer.has-seals { height: auto; min-height: 150px; padding: 2.25rem 5rem 2rem 3.75rem; }
+.eh-footer.has-seals .eh-footer-inner { align-items: flex-start; justify-content: flex-end; padding-right: 0; }
+.eh-footer-seals { display: flex; gap: 1.5rem; margin-right: auto; }
+.eh-footer-seals img { width: 90px; height: 90px; border-radius: 9999px; background: #fff; object-fit: contain; }
+@media (max-width: 860px) {
+  .eh-footer.has-seals { padding: 1.75rem 1.25rem; }
+  .eh-footer.has-seals .eh-footer-inner { flex-wrap: wrap; }
+  .eh-footer-seals { margin-right: 0; width: 100%; }
+}
+
+/* ==========================================================================
+   Jobseeker app chrome + dashboard  (opt-in: wrapper has .eh-chrome)
+   Recolors the existing top bar / sidebar / page background to the new theme.
+   The sidebar items themselves are unchanged — only colors.
+   ========================================================================== */
+.eh-chrome { background: var(--eh-cream) !important; }
+.eh-chrome > header {
+  background: var(--eh-cream) !important; border-bottom: 0 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,.18);
+}
+.eh-chrome > header svg.text-primary { color: var(--eh-blue); }
+.eh-chrome > header #avatar-btn { background: var(--eh-blue); }
+.eh-dash-brand { display: flex; align-items: center; gap: .1rem; font-weight: 700; font-size: 1.5rem; letter-spacing: -.02em; line-height: 1; }
+.eh-dash-brand img { height: 46px; width: auto; margin: -4px -4px -4px -8px; }
+.eh-dash-brand .easy { color: var(--eh-sky); }
+.eh-dash-brand .hire { color: var(--eh-blue); }
+
+.eh-chrome #sidebar { background: var(--eh-cream-dk) !important; border-right: 2px solid rgba(8,44,132,.12) !important; }
+.eh-chrome #sidebar .nav-link { color: var(--eh-slate); }
+.eh-chrome #sidebar .nav-link:hover { background: rgba(249,249,227,.7); color: var(--eh-blue); }
+.eh-chrome #sidebar .nav-link.font-semibold { background: var(--eh-cream); color: var(--eh-blue); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.eh-chrome #sidebar .nav-divider { border-color: rgba(8,44,132,.15); }
+.eh-chrome #main-content { background: var(--eh-cream) !important; min-width: 0; }
+/* keep the footer at the bottom of the window on short pages */
+.eh-chrome #main-content { display: flex; flex-direction: column; min-height: calc(100vh - 3.5rem); }
+.eh-chrome #main-content > div.pb-16 { flex: 1 0 auto; min-height: 0; padding-bottom: 1.5rem; }
+/* Identity-verification banner: compact, in the new palette */
+.eh-chrome #verify-id-banner { background: #F4EBC6; border-bottom: 0; padding-top: .45rem; padding-bottom: .45rem; }
+.eh-chrome #verify-id-banner a { background: #E2A93A; padding: .2rem .85rem !important; font-size: .7rem; line-height: 1.2; }
+
+/* ---- Dashboard content ---- */
+.eh-dash { min-width: 0; padding: 3.25rem 2.5rem .5rem; max-width: 1900px; margin: 0 auto; color: var(--eh-navy); }
+.eh-dash-who { flex: 1 1 0; min-width: 0; }
+.eh-dash-top { display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin-bottom: 3rem; padding: 1.75rem 2.25rem 1.9rem; background: #F3F2D3; box-shadow: 0 3px 6px rgba(0,0,0,.2); }  /* info block: same color as the cards */
+.eh-dash-top .eh-pill { background: #E8E6B3; }
+.eh-dash-namerow { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; margin-bottom: .7rem; }
+.eh-dash-namerow .eh-dash-name { margin: 0; }
+.eh-dash-name { margin: 0 0 .7rem; font-size: clamp(2.2rem, 3.6vw, 3.3rem); font-weight: 300; line-height: 1.05; letter-spacing: -.02em; color: var(--eh-navy); }
+.eh-dash-name strong { font-weight: 800; }
+.eh-pills { display: flex; flex-wrap: wrap; gap: .45rem .55rem; }
+.eh-pill {
+  display: inline-block; max-width: 13rem; padding: .22rem .85rem; border-radius: 9999px;
+  background: #EAE8B9; color: var(--eh-slate); font-size: .78rem; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.eh-nav-resume { width: auto; height: 2.2rem; padding: 0 1.3rem; margin-right: .9rem; font-size: .85rem; border-radius: 9999px; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
+.eh-nav-resume:hover { transform: none; box-shadow: 0 2px 4px rgba(0,0,0,.2); background: #1F3F9A; }
+.eh-dash-rule { border: 0; border-top: 2px solid #E6E4A9; width: 80%; margin: 3.5rem auto 3rem; }
+.eh-dash-sec { margin-bottom: 3.25rem; }
+.eh-sechead { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; margin-bottom: 1.75rem; }
+.eh-sechead h2 { margin: 0; font-size: clamp(1.4rem, 2vw, 1.8rem); font-weight: 800; letter-spacing: -.02em; color: var(--eh-navy); line-height: 1.1; }
+.eh-sechead p { margin: .15rem 0 0; font-size: .85rem; color: var(--eh-slate); }
+.eh-viewall { font-size: .9rem; color: var(--eh-navy); white-space: nowrap; }
+.eh-viewall:hover { text-decoration: underline; }
+/* 4 cards per row (steps down to 3 / 2 / 1 as the window narrows) */
+.eh-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 1rem; row-gap: 1.1rem; }
+
+/* ---- Job card: colored top bar, logo, title block, tags, description, quick actions ---- */
+.eh-card {
+  position: relative; display: flex; flex-direction: column; background: #F3F2D3; color: var(--eh-navy);
+  box-shadow: 0 3px 6px rgba(0,0,0,.2);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.eh-card-bar {
+  position: absolute; left: 0; right: 0; top: 0; height: 13px; z-index: 1;
+  background: #ECEAC0; overflow: hidden;
+  transition: top .22s ease, height .22s ease;
+}
+.eh-card-bar .lbl {
+  height: 28px; padding: 0 1.1rem; display: flex; align-items: center; gap: .45rem;
+  font-size: .82rem; line-height: 1; white-space: nowrap; opacity: 0; transition: opacity .15s ease;
+}
+.eh-card-bar b { font-weight: 700; }
+.eh-card-bar .lbl svg { width: 13px; height: 13px; flex: none; }
+.tier-high .eh-card-bar { background: #3AB27A; color: #F3F2D3; }   /* text = card color, not plain white */
+.tier-rec  .eh-card-bar { background: #A5D98A; color: var(--eh-slate); }
+
+/* Recommended cards expand on hover: the card scales up a touch and its bar grows upward into a
+   labelled banner. The content never moves. Other cards only float slightly. */
+.tier-high:hover, .tier-rec:hover { transform: scale(1.035); box-shadow: 0 10px 18px rgba(0,0,0,.24); z-index: 2; }
+.tier-high:hover .eh-card-bar, .tier-rec:hover .eh-card-bar { top: -15px; height: 28px; }
+.tier-high:hover .eh-card-bar .lbl, .tier-rec:hover .eh-card-bar .lbl { opacity: 1; transition-delay: .08s; }
+.tier-none:hover { transform: translateY(-4px); box-shadow: 0 8px 14px rgba(0,0,0,.22); z-index: 2; }
+
+.eh-card-body { flex: 1; display: flex; flex-direction: column; gap: .6rem; margin-top: 13px; padding: .95rem 1.2rem .8rem; min-width: 0; }
+.eh-card-head { display: flex; align-items: flex-start; gap: .8rem; }
+.eh-logo {
+  flex: none; width: 2.55rem; height: 2.55rem; border-radius: .55rem; overflow: hidden;
+  background: #E8E6B3; color: var(--eh-blue); font-weight: 800; font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.eh-logo img { width: 100%; height: 100%; object-fit: cover; }
+.eh-card-title { min-width: 0; flex: 1; }
+.eh-card-title h3 { margin: 0; font-size: 1.045rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; color: var(--eh-navy); }
+.eh-card-title p { margin: .1rem 0 0; font-size: .78rem; line-height: 1.25; color: var(--eh-slate); }
+/* Company name + location: always one line; the check mark never gets pushed off */
+.eh-card-co { display: flex; align-items: center; min-width: 0; white-space: nowrap; }
+.eh-card-co .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.eh-card-co > span:not(.nm) { flex-shrink: 0; }
+/* smaller verified check beside the company name on cards */
+.eh-card-co > span:not(.nm) { width: 9px !important; height: 9px !important; margin-left: .25rem !important; }
+.eh-card-co > span:not(.nm) svg { width: 5.5px !important; height: 5.5px !important; }
+.eh-card-loc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eh-card-desc {
+  margin: 0; font-size: .76rem; line-height: 1.4; color: var(--eh-slate); opacity: .9;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.eh-card-tags { margin-bottom: .05rem; }
+.eh-card-tags .eh-pill { max-width: calc(50% - .3rem); font-size: .72rem; padding: .2rem .75rem; background: #E8E6B3; }
+
+/* hide + bookmark */
+.eh-card-actions { margin-top: auto; padding-top: .35rem; display: flex; justify-content: space-between; align-items: center; }
+.eh-ico { display: inline-flex; padding: 0; border: 0; background: none; cursor: pointer; color: rgba(8,44,132,.55); transition: color .15s, transform .15s; }
+.eh-ico svg { width: 19px; height: 19px; fill: none; }
+.eh-ico:hover { color: var(--eh-blue); transform: scale(1.12); }
+.eh-ico:disabled { opacity: .5; cursor: wait; }
+.eh-like.is-on { color: var(--eh-blue); }
+.eh-like.is-on svg { fill: currentColor; }
+
+/* Application cards: message preview + status tag shown plainly on the front */
+.eh-card-msg { -webkit-line-clamp: 3; line-clamp: 3; font-size: .8rem; margin-top: .1rem; }
+.eh-status-row { display: flex; justify-content: flex-end; margin-top: auto; padding-top: .3rem; }
+.eh-status {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-width: 7.5rem;
+  padding: .25rem .85rem; border-radius: 9999px; font-size: .74rem; color: var(--eh-slate); background: #E8E6B3;
+}
+.eh-empty { grid-column: 1 / -1; margin: 0; padding: 1.5rem 0; text-align: center; color: var(--eh-slate); font-size: .95rem; }
+.eh-empty a { text-decoration: underline; color: var(--eh-blue); }
+.eh-pager { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; font-size: .85rem; color: var(--eh-slate); }
+.eh-pager button { padding: .4rem 1.1rem; border: 0; background: #E8E6B3; color: var(--eh-blue); cursor: pointer; font: inherit; }
+.eh-pager button:disabled { opacity: .4; cursor: not-allowed; }
+.eh-dash .hidden { display: none; }
+@media (max-width: 1250px) { .eh-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 960px)  { .eh-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .eh-dash-top { flex-direction: column; align-items: flex-start; } }
+@media (max-width: 600px)  { .eh-cards { grid-template-columns: 1fr; } .eh-sechead { flex-direction: column; align-items: flex-start; } .eh-dash { padding: 2rem 1.25rem .5rem; } }
+
+/* ==========================================================================
+   List pages in the new UI: Jobs For You + Your Applications  (.eh-listpage)
+   Their scripts toggle Tailwind utility classes (bg-primary / bg-white) for the
+   active tab / chip, so those are restyled here instead of touching the JS.
+   ========================================================================== */
+.eh-dash.eh-listpage { padding-top: 2.25rem; }
+.eh-pagehead { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.eh-pagetitle { margin: 0; font-size: clamp(1.8rem, 2.8vw, 2.5rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; color: var(--eh-navy); }
+.eh-searchform { flex: 1; max-width: 26rem; min-width: 14rem; }
+.eh-searchform .eh-input { padding-right: 2.6rem; }
+.eh-search-btn { position: absolute; right: .75rem; top: 50%; transform: translateY(-50%); background: none; border: 0; padding: 0; cursor: pointer; color: var(--eh-slate); }
+.eh-search-btn svg { width: 18px; height: 18px; display: block; }
+
+.eh-ctl-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
+.eh-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.eh-tabs .tab-btn, .eh-listpage .tab-btn {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .32rem 1rem; border-radius: 9999px; border: 0;
+  font-size: .8rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background .15s, color .15s;
+}
+.eh-tabs .n { opacity: .65; font-weight: 500; }
+.eh-listpage .bg-primary { background: var(--eh-navy) !important; color: var(--eh-cream) !important; border-color: transparent !important; }
+.eh-listpage .bg-white:not(#sort-menu):not(#filters-panel) { background: #E8E6B3 !important; color: var(--eh-slate) !important; border-color: transparent !important; }
+.eh-listpage .bg-white:not(#sort-menu):not(#filters-panel):hover { background: #DEDBA4 !important; }
+.eh-ctl-link { display: inline-flex; align-items: center; gap: .5rem; background: none; border: 0; cursor: pointer; color: var(--eh-slate); font: inherit; font-size: .85rem; }
+.eh-ctl-link:hover { color: var(--eh-blue); }
+
+/* dropdown menus / filter panel */
+.eh-menu, #sort-menu, #filters-panel { background: #F3F2D3 !important; border: 0 !important; border-radius: 0 !important; box-shadow: 0 6px 14px rgba(0,0,0,.2) !important; }
+.eh-menu a { display: block; padding: .5rem 1rem; font-size: .85rem; color: var(--eh-slate); }
+.eh-menu a:hover { background: #E8E6B3; }
+.eh-menu a.is-current { font-weight: 700; color: var(--eh-blue); }
+#sort-menu button { color: var(--eh-slate); }
+#sort-menu button:hover { background: #E8E6B3 !important; }
+#filters-panel p { color: var(--eh-slate); }
+#filters-panel .border-t { border-color: rgba(8,44,132,.12); }
+
+.eh-nudge { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; padding: 1rem 1.5rem; background: #F3F2D3; box-shadow: 0 3px 6px rgba(0,0,0,.2); }
+.eh-nudge p { margin: 0; }
+.eh-btn-sm { width: auto; height: 2.2rem; padding: 0 1.3rem; font-size: .85rem; border-radius: 9999px; }
+
+/* pagination (shared partial) */
+.eh-listpage nav[aria-label="Pagination"] a { background: #E8E6B3 !important; border: 0 !important; color: var(--eh-blue) !important; }
+.eh-listpage nav[aria-label="Pagination"] a:hover { background: #DEDBA4 !important; }
+.eh-listpage nav[aria-label="Pagination"] span.rounded-full { background: #EFEDC8 !important; border: 0 !important; color: rgba(27,59,90,.4) !important; }
+
+/* card extras used on these pages */
+.eh-ico.is-on { color: var(--eh-blue); }
+.eh-status-row { justify-content: space-between; align-items: center; }
+.eh-applied { font-size: .72rem; color: var(--eh-slate); opacity: .8; }
+.eh-closed { display: inline-block; margin-left: .3rem; padding: .1rem .45rem; border-radius: 9999px; background: #E3E1B8; color: var(--eh-slate); font-size: .6rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; vertical-align: middle; }
+.eh-card.is-closed { opacity: .7; }

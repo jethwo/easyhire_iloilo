@@ -1,4 +1,5 @@
 {% load match_tags %}
+{% if new_cards %}{% include "jobseekers/_jobs_grid_new.html" %}{% else %}
 {# `from_param` (context var) drives the job-detail back-link — default is #}
 {# "recommended" for the Jobs For You grid; company_public.html sets it   #}
 {# to "company:<hashid>" so the back link resolves to "Back to Company    #}
@@ -105,3 +106,4 @@
 </div>
 {% endif %}
 {% endwith %}
+{% endif %}

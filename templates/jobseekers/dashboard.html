@@ -1,271 +1,99 @@
-{% extends "base/base_dashboard_jobseeker.html" %}
-{% load static match_tags %}
+{% extends "base/base_jobseeker_themed.html" %}
+{% load static match_tags asset_tags %}
 
 {% block title %}Dashboard — EasyHire{% endblock %}
 
-{% with active_nav="dashboard" %}
 {% block page_content %}
-<div class="py-8">
+<div class="eh-dash">
 
-  <!-- ── User card ─────────────────────────────────────────────── -->
-  <div class="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 mb-8 pb-6 border-b border-gray-100">
-
-    <!-- Avatar -->
-    <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary flex items-center justify-center flex-shrink-0 overflow-hidden">
-      {% if profile.profile_picture %}
-        <img src="{{ profile.profile_picture.url }}" alt="{{ profile.first_name }}" class="w-full h-full object-cover">
-      {% else %}
-        <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-        </svg>
-      {% endif %}
-    </div>
-
-    <!-- Name + tags -->
-    <div class="flex-1 min-w-0">
-      <h2 class="text-xl text-primary mb-2 leading-tight">
-        {{ profile.first_name }}
-        {% if profile.middle_name %} {{ profile.middle_name|first }}.{% endif %}
-        <span class="font-bold">{{ profile.last_name }}</span>
-        {% if profile.suffix %} {{ profile.suffix }}{% endif %}
-      </h2>
-      <div class="flex flex-wrap gap-1.5">
+  <!-- ── Name + résumé tags ─────────────────────────────────────── -->
+  <header class="eh-dash-top">
+    <div class="eh-dash-who">
+      <div class="eh-dash-namerow">
+        <h1 class="eh-dash-name">
+        {{ profile.first_name }}{% if profile.middle_name %} {{ profile.middle_name|first }}.{% endif %}
+        <strong>{{ profile.last_name }}</strong>{% if profile.suffix %} {{ profile.suffix }}{% endif %}
+      </h1>
+      </div>
+      <div class="eh-pills">
         {% for edu in education %}
-        <span class="inline-flex items-center gap-1 bg-teal/10 text-teal text-xs px-2.5 py-1 rounded-full border border-teal/20">
-          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>
-          {{ edu.course_degree|default:edu.get_level_display }}
-        </span>
+          <span class="eh-pill">{{ edu.course_degree|default:edu.get_level_display }}</span>
+          {% if edu.institution %}<span class="eh-pill">{{ edu.institution }}</span>{% endif %}
         {% endfor %}
-        {% for skill in skills|slice:":4" %}
-        <span class="inline-flex items-center gap-1 bg-teal/10 text-teal text-xs px-2.5 py-1 rounded-full border border-teal/20">
-          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
-          {{ skill.name }}
-        </span>
+        {% for exp in profile.experiences.all|slice:":2" %}
+          <span class="eh-pill">{{ exp.position }}{% if exp.company %} at {{ exp.company }}{% endif %}</span>
         {% endfor %}
-        {% for cert in certifications|slice:":2" %}
-        <span class="inline-flex items-center gap-1 bg-teal/10 text-teal text-xs px-2.5 py-1 rounded-full border border-teal/20">
-          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1l2.39 7.26H22l-6.19 4.5 2.39 7.26L12 15.51l-6.2 5.51 2.39-7.26L2 9.26h7.61z"/></svg>
-          {{ cert.name }}
-        </span>
-        {% endfor %}
-        {% for sector in profile.sectors.all %}
-        <span class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border
-          {% if sector.code == 'lgbtqia' %}bg-purple-50 text-purple-500 border-purple-200
-          {% elif sector.code == 'pwd' %}bg-blue-50 text-blue-500 border-blue-200
-          {% elif sector.code == 'osy' %}bg-orange-50 text-orange-500 border-orange-200
-          {% elif sector.code == 'senior_citizen' %}bg-gray-100 text-gray-500 border-gray-200
-          {% else %}bg-teal/10 text-teal border-teal/20{% endif %}">
-          {{ sector.label }}
-        </span>
-        {% endfor %}
+        {% for skill in skills|slice:":4" %}<span class="eh-pill">{{ skill.name }}</span>{% endfor %}
+        {% for cert in certifications|slice:":2" %}<span class="eh-pill">{{ cert.name }}</span>{% endfor %}
+        {% for sector in profile.sectors.all %}<span class="eh-pill">{{ sector.label }}</span>{% endfor %}
       </div>
     </div>
+  </header>
 
-    <!-- Resume nudge -->
-    <div class="flex-shrink-0 sm:text-right sm:max-w-[180px]">
-      <p class="hidden sm:block text-primary text-sm leading-snug mb-3">
-        Update your <strong>résumé</strong> to help us find the <strong>best jobs</strong> for you<span class="text-muted">...</span>
-      </p>
-      <a href="/resume/"
-         class="inline-block bg-surface border border-taupe/40 text-primary text-sm font-semibold px-5 py-2 rounded-full hover:bg-primary hover:text-white hover:border-primary transition">
-        Edit Résumé &gt;
-      </a>
+  <!-- ── Jobs for You ───────────────────────────────────────────── -->
+  <section class="eh-dash-sec">
+    <div class="eh-sechead">
+      <div>
+        <h2>Jobs for You</h2>
+        <p>{% if profile.profile_complete %}Click the Job cards to view more information and apply.{% else %}Complete your résumé to get personalised job recommendations.{% endif %}</p>
+      </div>
+      <a href="/jobs/for-you/" class="eh-viewall">View All <strong>Jobs for You</strong> &gt;</a>
     </div>
-
-  </div>
-
-  <h1 class="text-2xl sm:text-3xl font-extrabold text-primary mb-8">
-    Welcome to <span class="text-primary">Easy</span><span class="text-teal">Hire</span><span class="text-primary">!</span>
-  </h1>
-
-  <!-- ── Jobs For You ──────────────────────────────────────────── -->
-  <section class="mb-10">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-      </svg>
-      <h2 class="text-xl text-primary"><span class="font-extrabold">Jobs</span> For You</h2>
-    </div>
-    <p class="text-muted text-xs mb-4">
-      Top recommended jobs for you based on your résumé.
-      <a href="/jobs/for-you/" class="underline hover:text-primary transition">View All Jobs for You.</a>
-    </p>
-
-    <div class="border border-gray-200 rounded-xl overflow-hidden overflow-x-auto">
-      <table class="w-full text-sm min-w-[640px]">
-        <thead class="border-b border-gray-100 bg-white">
-          <tr class="text-left">
-            <th class="px-5 py-3 text-xs font-medium text-muted">Job Title</th>
-            <th class="px-4 py-3 text-xs font-medium text-muted">Company</th>
-            <th class="px-4 py-3 text-xs font-medium text-muted">Job Location</th>
-            <th class="px-4 py-3 text-xs font-medium text-muted">Availability</th>
-            <th class="px-4 py-3 text-xs font-medium text-muted">Match</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in ranked_jobs %}
-          <tr class="row-link border-b border-gray-50 last:border-0 hover:bg-surface/40 transition cursor-pointer"
-              data-href="/jobs/view/{{ item.job.id|hashid }}/">
-            <td class="px-5 py-3 font-semibold text-primary">{{ item.job.title }}</td>
-            <td class="px-4 py-3 text-muted italic text-xs">
-              <a href="/companies/{{ item.job.company.id|hashid }}/" class="hover:text-teal transition">{{ item.job.company.name|truncatechars:25 }}</a>{% include "partials/_verified_badge.html" with verified=item.job.company.is_verified %}
-            </td>
-            <td class="px-4 py-3 text-muted text-xs">{{ item.job.location_display|truncatechars:25 }}</td>
-            <td class="px-4 py-3 text-muted text-xs">{{ item.job.slots }} slot{{ item.job.slots|pluralize }} open</td>
-            <td class="px-4 py-3">
-              {% if item.score is not None %}
-                {% match_badge item.score %}
-              {% else %}
-                <span class="text-muted text-xs">—</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="5" class="px-5 py-8 text-center text-muted text-sm">
-              Complete your résumé to get personalised job recommendations.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="eh-cards">
+      {% for item in ranked_jobs|slice:":8" %}
+      {% if item.score is None %}{% include "jobseekers/_dash_card.html" with job=item.job co=item.job.company tier="none" %}
+      {% elif item.score >= 85 %}{% include "jobseekers/_dash_card.html" with job=item.job co=item.job.company tier="high" %}
+      {% else %}{% include "jobseekers/_dash_card.html" with job=item.job co=item.job.company tier="rec" %}{% endif %}
+      {% empty %}
+      <p class="eh-empty">No recommended jobs yet. <a href="/jobs/">Browse all jobs</a></p>
+      {% endfor %}
     </div>
   </section>
 
-  <!-- ── Your Applications ─────────────────────────────────────── -->
-  <section class="mb-10">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-      </svg>
-      <h2 class="text-xl text-primary">Your <span class="font-extrabold">Applications</span></h2>
+  <!-- ── Your Applications ──────────────────────────────────────── -->
+  <section class="eh-dash-sec">
+    <div class="eh-sechead">
+      <div>
+        <h2>Your Applications</h2>
+        <p>View, manage, and track your applications.</p>
+      </div>
+      <a href="/applications/" class="eh-viewall">View All <strong>Applications</strong> &gt;</a>
     </div>
-    <p class="text-muted text-xs mb-4">
-      Your most recent applications.
-      <a href="/applications/" class="underline hover:text-primary transition">View All Your Applications.</a>
-    </p>
-
-    <div class="border border-gray-200 rounded-xl overflow-hidden overflow-x-auto">
-      <table class="w-full text-sm min-w-[640px]">
-        <thead class="border-b border-gray-100 bg-white">
-          <tr class="text-left">
-            <th class="px-5 py-3 text-xs font-medium text-muted">Job Title</th>
-            <th class="px-4 py-3 text-xs font-medium text-muted">Company</th>
-            <th class="px-4 py-3 text-xs font-medium text-muted">Job Location</th>
-            <th class="px-4 py-3 text-xs font-medium text-muted">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for app in applications %}
-          <tr class="row-link border-b border-gray-50 last:border-0 hover:bg-surface/40 transition cursor-pointer"
-              data-href="/jobs/view/{{ app.job.id|hashid }}/">
-            <td class="px-5 py-3 font-semibold text-primary">{{ app.job.title }}</td>
-            <td class="px-4 py-3 text-muted italic text-xs">
-              <a href="/companies/{{ app.job.company.id|hashid }}/" class="hover:text-teal transition">{{ app.job.company.name|truncatechars:25 }}</a>{% include "partials/_verified_badge.html" with verified=app.job.company.is_verified %}
-            </td>
-            <td class="px-4 py-3 text-muted text-xs">{{ app.job.location_display|truncatechars:25 }}</td>
-            <td class="px-4 py-3">
-              {% if app.status == 'hired' %}
-                <span class="inline-flex items-center gap-1 bg-teal text-white text-xs font-semibold px-3 py-1 rounded-full border border-teal">
-                  <span class="w-1.5 h-1.5 rounded-full bg-white inline-block"></span>Hired
-                </span>
-              {% elif app.status == 'accepted' %}
-                <span class="inline-flex items-center gap-1 bg-teal/10 text-teal text-xs font-semibold px-3 py-1 rounded-full border border-teal/20">
-                  <span class="w-1.5 h-1.5 rounded-full bg-teal inline-block"></span>In Progress
-                </span>
-              {% elif app.status == 'rejected' %}
-                <span class="inline-flex items-center gap-1 bg-gray-100 text-muted text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>Not Selected
-                </span>
-              {% else %}
-                {# 'pending' or 'viewed' — both show as Pending. #}
-                <span class="inline-flex items-center gap-1 bg-gray-100 text-muted text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>Pending
-                </span>
-              {% endif %}
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="4" class="px-5 py-8 text-center text-muted text-sm">
-              You haven't applied to any jobs yet.
-              <a href="/jobs/" class="text-teal hover:underline">Browse jobs</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="eh-cards">
+      {% for app in applications|slice:":4" %}
+      {% include "jobseekers/_dash_card.html" with job=app.job co=app.job.company tier=app.tier app=app %}
+      {% empty %}
+      <p class="eh-empty">You haven't applied to any jobs yet. <a href="/jobs/">Browse jobs</a></p>
+      {% endfor %}
     </div>
   </section>
 
-  <!-- ── Companies You Follow ──────────────────────────────────── -->
-  <section class="mb-10">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-      </svg>
-      <h2 class="text-xl text-primary"><span class="font-extrabold">Companies</span> You Follow</h2>
+  <!-- ── Employers You Follow ───────────────────────────────────── -->
+  <section class="eh-dash-sec">
+    <div class="eh-sechead">
+      <div>
+        <h2>Employers You Follow</h2>
+        <p>Recent Jobs posted by Employers you follow.</p>
+      </div>
+      <a href="/companies/" class="eh-viewall">Browse <strong>Employers</strong> &gt;</a>
     </div>
-    {# The Browse link stays visible even when the jobseeker already        #}
-    {# follows companies — they can always add more, and the empty-state    #}
-    {# below is only reached when the followed list is truly empty.         #}
-    <p class="text-muted text-xs mb-4">
-      Recent Job Posts from companies you follow. <a href="/companies/" class="text-teal hover:underline font-semibold">Browse companies &rsaquo;</a>
-    </p>
 
     {% if followed_jobs %}
-    {# Client-side pagination — the whole list is rendered but only 9 tiles #}
-    {# are visible at a time. Prev / Next buttons flip a `data-page` attr   #}
-    {# on the wrapper; JS at the bottom of the page toggles `.hidden` on    #}
-    {# each tile based on its data-page-index vs the current page.          #}
-    <div id="followed-jobs" data-page="0" data-per-page="9">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {# Client-side pager: the whole list is in the DOM; JS toggles .hidden per page. #}
+    <div id="followed-jobs" data-page="0" data-per-page="4">
+      <div class="eh-cards">
         {% for item in followed_jobs %}
-        <a href="/jobs/view/{{ item.job.id|hashid }}/"
-           data-page-index="{{ forloop.counter0 }}"
-           class="followed-tile border border-gray-200 rounded-xl p-4 hover:shadow-md transition hover:border-teal/30 bg-white block">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {% if item.company.logo %}
-                <img src="{{ item.company.logo.url }}" alt="{{ item.company.name }}" class="w-full h-full object-cover">
-              {% else %}
-                <span class="text-primary font-bold text-sm">{{ item.company.name|first|upper }}</span>
-              {% endif %}
-            </div>
-            <div class="min-w-0">
-              <p class="text-muted text-xs truncate">{{ item.company.name }}{% include "partials/_verified_badge.html" with verified=item.company.is_verified %}</p>
-              <p class="font-bold text-primary text-sm leading-tight truncate">{{ item.job.title }}</p>
-              <p class="text-muted text-xs truncate mt-0.5">{{ item.job.location_display }}</p>
-              <p class="text-muted text-xs mt-0.5 italic">Posted {{ item.job.created_at|timesince }} ago</p>
-            </div>
-          </div>
-        </a>
+        {% include "jobseekers/_dash_card.html" with job=item.job co=item.company tier="none" extra_class="followed-tile" idx=forloop.counter0 %}
         {% endfor %}
       </div>
-      {# Pager — visually mirrors partials/_pagination.html but works via #}
-      {# JS instead of ?page= URL params.                                #}
-      <nav id="followed-jobs-pager" class="flex items-center justify-center gap-2 mt-6 flex-wrap hidden" aria-label="Pagination">
-        <button type="button" data-followed-prev
-                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-primary hover:bg-surface hover:border-teal/30 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-gray-200">
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-          Previous
-        </button>
-        <span class="text-xs text-muted px-2">
-          Page <strong id="followed-jobs-page-num" class="text-primary">1</strong> of <span id="followed-jobs-page-total">1</span>
-        </span>
-        <button type="button" data-followed-next
-                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-xs text-primary hover:bg-surface hover:border-teal/30 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-gray-200">
-          Next
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-        </button>
+      <nav id="followed-jobs-pager" class="eh-pager hidden" aria-label="Pagination">
+        <button type="button" data-followed-prev>Previous</button>
+        <span>Page <strong id="followed-jobs-page-num">1</strong> of <span id="followed-jobs-page-total">1</span></span>
+        <button type="button" data-followed-next>Next</button>
       </nav>
     </div>
     {% else %}
-    <div class="border border-gray-200 rounded-xl px-6 py-10 text-center text-muted text-sm">
-      Follow companies to see their latest job posts here.
-      <br>
-      <a href="/companies/" class="text-teal hover:underline mt-1 inline-block">Browse companies</a>
-    </div>
+    <p class="eh-empty">You haven't followed any Employers yet.</p>
     {% endif %}
   </section>
 
@@ -274,24 +102,49 @@
 
 {% block page_scripts %}
 <script>
-// Whole-row click navigates to the job; clicks inside an <a> or <button> pass through.
-document.querySelectorAll('tr.row-link').forEach(function(tr) {
-  tr.addEventListener('click', function(e) {
-    if (e.target.closest('a, button')) return;
-    const href = tr.dataset.href;
-    if (href) window.location = href;
+// ── Hide / bookmark quick actions on the cards ───────────────────
+function ehCsrf() {
+  const m = document.cookie.match(/(?:^|; )csrftoken=([^;]*)/);
+  return m ? decodeURIComponent(m[1]) : '';
+}
+function ehPost(path, btn, done) {
+  btn.disabled = true;
+  fetch(path, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': ehCsrf() } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { btn.disabled = false; done(d); })
+    .catch(function() { btn.disabled = false; });
+}
+function ehLike(e, jobId, btn) {
+  e.preventDefault(); e.stopPropagation();
+  ehPost('/jobs/' + jobId + '/like/', btn, function(d) {
+    btn.classList.toggle('is-on', !!d.liked);
+    btn.title = d.liked ? 'Remove bookmark' : 'Bookmark this job';
+    if (d.liked) {
+      const card = btn.closest('.eh-card');
+      window.showToast(['You have bookmarked ', {b: card.dataset.title}, ' at ', {b: card.dataset.company}], { kind: 'success' });
+    }
   });
-});
+}
+function ehHide(e, jobId, btn) {
+  e.preventDefault(); e.stopPropagation();
+  ehPost('/jobs/' + jobId + '/hide/', btn, function(d) {
+    if (!d.hidden) return;
+    const card = btn.closest('.eh-card');
+    window.showToast(['You have hidden ', {b: card.dataset.title}, ' at ', {b: card.dataset.company}], { kind: 'success' });
+    card.style.transition = 'opacity .2s'; card.style.opacity = '0';
+    setTimeout(function() { card.remove(); }, 200);
+  });
+}
 
-// ── Followed Companies: client-side paginator ───────────────────
+// ── Followed employers: client-side paginator ───────────────────
 // The whole list is in the DOM already — this just toggles .hidden on
-// each tile based on its data-page-index vs the current data-page.
+// each card based on its index vs the current data-page.
 (function() {
   const wrap  = document.getElementById('followed-jobs');
   const pager = document.getElementById('followed-jobs-pager');
   if (!wrap || !pager) return;
   const tiles   = Array.from(wrap.querySelectorAll('.followed-tile'));
-  const perPage = parseInt(wrap.dataset.perPage, 10) || 9;
+  const perPage = parseInt(wrap.dataset.perPage, 10) || 4;
   const total   = Math.ceil(tiles.length / perPage);
   if (total <= 1) return;  // no pager needed
 
@@ -325,4 +178,3 @@ document.querySelectorAll('tr.row-link').forEach(function(tr) {
 })();
 </script>
 {% endblock %}
-{% endwith %}

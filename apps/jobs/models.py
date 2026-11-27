@@ -493,6 +493,22 @@ class JobExperienceRequirement(models.Model):
             return f'{positions[0]} or {positions[1]}'
         return f'{positions[0]} or {positions[1]} (+{len(positions) - 2} more)'
 
+    @property
+    def short_display(self):
+        """Compact card tag, e.g. "2 Years - Any" / "6 Mos - Legal Secretary".
+        Falls back to "No experience" when nothing is required."""
+        if self.months_required == 0:
+            return "No experience"
+        years, months = divmod(self.months_required, 12)
+        parts = []
+        if years:
+            parts.append(f"{years} Year{'s' if years != 1 else ''}")
+        if months:
+            parts.append(f"{months} Mo{'s' if months != 1 else ''}")
+        qualifier = self.experience_field_display
+        qualifier = "Any" if qualifier in ("", "any field") else qualifier
+        return f"{' '.join(parts)} - {qualifier}"
+
 
 class Application(models.Model):
     STATUS_PENDING      = "pending"        # employer hasn't opened the application yet

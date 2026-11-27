@@ -1,5 +1,12 @@
 from django.db import migrations, models
 
+from apps.core.migration_helpers import add_column
+
+
+def _add_application_message(apps, schema_editor):
+    # TEXT, so no SQL default is installed on MySQL - see add_column().
+    add_column(schema_editor, 'applications', 'application_message', 'TEXT')
+
 
 class Migration(migrations.Migration):
 
@@ -17,14 +24,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             database_operations=[
-                migrations.RunSQL(
-                    sql="""
-                        ALTER TABLE applications ADD COLUMN IF NOT EXISTS application_message TEXT DEFAULT '';
-                        UPDATE applications SET application_message = '' WHERE application_message IS NULL;
-                        ALTER TABLE applications ALTER COLUMN application_message SET DEFAULT '';
-                    """,
-                    reverse_sql=migrations.RunSQL.noop,
-                ),
+                migrations.RunPython(_add_application_message, migrations.RunPython.noop),
             ],
         ),
     ]

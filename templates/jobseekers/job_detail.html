@@ -211,7 +211,7 @@
     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 z-10">
       <div class="mb-4">
         <p class="text-primary font-bold text-base leading-tight">
-          {{ job.title }} <span class="text-muted font-normal">— {{ job.company.name }}</span>
+          {{ job.title }} <span class="text-muted font-normal">— {{ job.company.name }}{% include "partials/_verified_badge.html" with verified=job.company.is_verified %}</span>
         </p>
         <p class="text-muted text-xs mt-1">
           {% if job.location_type == 'remote' %}Remote{% else %}{{ job.location_display }}{% endif %}
@@ -431,6 +431,7 @@
         svg.setAttribute('fill', 'currentColor');
         svg.removeAttribute('stroke'); svg.removeAttribute('stroke-width');
         btn.title = 'Remove bookmark';
+        window.showToast(['You have bookmarked ', {b: '{{ job.title|escapejs }}'}, ' at ', {b: '{{ job.company.name|escapejs }}'}], { kind: 'success' });
       } else {
         btn.classList.add('text-gray-300', 'hover:text-amber');
         btn.classList.remove('text-amber');
@@ -446,6 +447,7 @@
         btn.classList.remove('text-gray-300', 'hover:text-red-400');
         btn.classList.add('text-primary');
         btn.title = 'Unhide this job';
+        window.showToast(['You have hidden ', {b: '{{ job.title|escapejs }}'}, ' at ', {b: '{{ job.company.name|escapejs }}'}], { kind: 'success' });
       } else {
         btn.classList.add('text-gray-300', 'hover:text-red-400');
         btn.classList.remove('text-primary');

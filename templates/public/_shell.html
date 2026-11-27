@@ -1,0 +1,159 @@
+{% extends "base/base.html" %}
+{% load static asset_tags %}
+{% comment %}
+Shared shell for the public-facing "new UI" pages: landing, jobseeker sign-in
+and jobseeker registration. Child templates only fill in what's different:
+
+  {% block title %}        page <title>
+  {% block view_class %}   body classes — eh-view-landing | eh-view-auth (+ a modifier)
+  {% block right_panel %}  content that sits inside the cream wave on the right
+
+The left side (seals, EasyHire lockup, tagline, the two audience buttons),
+the top navbar and the footer are identical everywhere, so a visual change
+to any of them is a one-file edit: _shell.html / _nav.html / _footer.html.
+Styling lives in static/css/public.css.
+{% endcomment %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static_v 'css/public.css' %}">
+{% endblock %}
+
+{% block body_class %}eh-public {% block view_class %}{% endblock %}{% endblock %}
+
+{% block navbar %}{% include "public/_nav.html" %}{% endblock %}
+
+{% block content %}
+<main class="eh-hero">
+
+  <div class="eh-seals">
+    <img class="eh-seal eh-seal-city" src="{% static 'images/iloilo_logo.png' %}" alt="City of Iloilo, Philippines">
+    <img class="eh-seal eh-seal-peso" src="{% static 'images/peso_logo.png' %}" alt="Public Employment Service Office">
+  </div>
+
+  <div class="eh-wave"></div>
+
+  <div class="eh-hero-left">
+    <div class="eh-brand">
+      <img src="{% static 'images/logo-02.png' %}" alt="">
+      <span class="eh-brand-word"><span class="easy">Easy</span><span class="hire">Hire</span></span>
+    </div>
+    <p class="eh-tagline">
+      The Official Digital Platform of
+      <strong>Public Employment Services Office (PESO)</strong> Iloilo City
+    </p>
+
+    <a class="eh-cta" href="/login/">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 12a4 4 0 100-8 4 4 0 000 8zm0 2c-3 0-8 1.5-8 4.5V20h16v-1.5C17 15.5 12 14 9 14zm7-8h6v2h-6V6zm0 4h6v2h-6v-2zm0 4h4v2h-4v-2z"/></svg>
+      <span>EasyHire for <strong>Jobseekers</strong></span>
+    </a>
+    <a class="eh-cta" href="/employers/login/">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 3a2 2 0 00-2 2v1H3a1 1 0 00-1 1v4h20V7a1 1 0 00-1-1h-4V5a2 2 0 00-2-2H9zm0 2h6v1H9V5zM2 13v6a1 1 0 001 1h18a1 1 0 001-1v-6h-8v1.5h-4V13H2z"/></svg>
+      <span>EasyHire for <strong>Employers</strong></span>
+    </a>
+  </div>
+
+  <div class="eh-hero-right">
+    {% block right_panel %}{% endblock %}
+  </div>
+
+</main>
+
+<script>
+/* Invisible boundary through the PESO seal: pointer left of it → blue grows,
+   right of it → cream grows (see "Hover" section in public.css). */
+(function () {
+  var hero = document.querySelector('.eh-hero');
+  var seal = document.querySelector('.eh-seal-peso');
+  if (!hero || !seal) return;
+  function setSide(v) {
+    if (v) { if (hero.dataset.side !== v) hero.dataset.side = v; }
+    else delete hero.dataset.side;
+  }
+  hero.addEventListener('mousemove', function (e) {
+    if (window.innerWidth <= 860) return setSide(null);
+    var r = seal.getBoundingClientRect();
+    setSide(e.clientX < r.left + r.width / 2 ? 'left' : 'right');
+  });
+  hero.addEventListener('mouseleave', function () { setSide(null); });
+})();
+</script>
+
+<script>
+/* Seamless navigation between the landing / sign-in / register / employer
+   sign-in pages: instead of a full page load, fetch the target page, swap just
+   the right-hand panel + body class + title, and pushState the URL. The cream
+   wave then animates between widths via its CSS transition. Anything we can't
+   handle (redirects, other pages, errors) falls back to a normal navigation.
+   Form POSTs are untouched (they're normal submits). */
+(function () {
+  var PAGES = ['/', '/login/', '/register/', '/employers/login/', '/employers/register/'];
+  var hero  = document.querySelector('.eh-hero');
+  var panel = document.querySelector('.eh-hero-right');
+  var wave  = document.querySelector('.eh-wave');
+  if (!hero || !panel || !window.fetch || !window.DOMParser || !history.pushState) return;
+  var busy = false;
+
+  function isSwappable(url) {
+    return url.origin === location.origin && PAGES.indexOf(url.pathname) !== -1 && !url.search;
+  }
+
+  function swapTo(url, push) {
+    if (busy) return;
+    busy = true;
+    panel.classList.add('is-swapping');
+    var minWait = new Promise(function (r) { setTimeout(r, 160); });
+    fetch(url.pathname, { credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
+      .then(function (res) {
+        if (!res.ok || res.redirected) throw new Error('fallback');
+        return res.text();
+      })
+      .then(function (html) {
+        return minWait.then(function () { return html; });
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var next = doc.querySelector('.eh-hero-right');
+        if (!next) throw new Error('fallback');
+
+        document.title = doc.title;
+        document.body.className = doc.body.className;
+        panel.innerHTML = next.innerHTML;
+        // innerHTML doesn't run scripts — re-create them so showSignIn() etc. exist.
+        panel.querySelectorAll('script').forEach(function (old) {
+          var fresh = document.createElement('script');
+          fresh.textContent = old.textContent;
+          old.replaceWith(fresh);
+        });
+        if (push) history.pushState({ eh: 1 }, '', url.pathname);
+        delete hero.dataset.side;
+
+        // little pulse on the wave, same as a normal page load
+        if (wave) { wave.style.animation = 'none'; void wave.offsetWidth; wave.style.animation = ''; }
+        var menu = document.getElementById('eh-nav-menu');
+        if (menu) menu.classList.remove('is-open');
+        panel.classList.remove('is-swapping');
+        busy = false;
+      })
+      .catch(function () { location.href = url.pathname; });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a || a.target || a.hasAttribute('download')) return;
+    var url = new URL(a.href, location.href);
+    if (!isSwappable(url)) return;
+    e.preventDefault();
+    if (url.pathname === location.pathname) return;
+    swapTo(url, true);
+  });
+
+  window.addEventListener('popstate', function () {
+    var url = new URL(location.href);
+    if (isSwappable(url)) swapTo(url, false); else location.reload();
+  });
+})();
+</script>
+{% endblock %}
+
+{% block footer %}{% include "public/_footer.html" %}{% endblock %}

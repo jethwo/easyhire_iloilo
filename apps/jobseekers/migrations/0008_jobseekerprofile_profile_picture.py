@@ -1,5 +1,12 @@
 from django.db import migrations, models
 
+from apps.core.migration_helpers import add_column
+
+
+def _add_profile_picture(apps, schema_editor):
+    add_column(schema_editor, 'jobseeker_profiles', 'profile_picture',
+               'VARCHAR(100)', default=None)
+
 
 class Migration(migrations.Migration):
 
@@ -19,13 +26,7 @@ class Migration(migrations.Migration):
                 ),
             ],
             database_operations=[
-                migrations.RunSQL(
-                    sql="""
-                        ALTER TABLE jobseeker_profiles
-                            ADD COLUMN IF NOT EXISTS profile_picture VARCHAR(100);
-                    """,
-                    reverse_sql=migrations.RunSQL.noop,
-                ),
+                migrations.RunPython(_add_profile_picture, migrations.RunPython.noop),
             ],
         ),
     ]

@@ -1,0 +1,7 @@
+{# Tag rows (max 4, two per row) + 2-line description preview, shared by the dashboard job cards. #}
+<div class="eh-pills eh-card-tags">
+  {% if job.education_requirement %}<span class="eh-pill">{{ job.education_requirement.course_degree|default:job.education_requirement.get_level_display }}</span>{% endif %}
+  {% if job.experience_requirement %}<span class="eh-pill">{{ job.experience_requirement.short_display }}</span>{% endif %}
+  {% for skill in job.skill_requirements.all|slice:":2" %}<span class="eh-pill">{{ skill.name }}</span>{% endfor %}
+</div>
+{% if job.description %}<p class="eh-card-desc">{{ job.description }}</p>{% endif %}

@@ -1,0 +1,20 @@
+{% extends "base/base_dashboard_jobseeker.html" %}
+{% load static asset_tags %}
+{% comment %}
+New-UI (cream theme) version of the jobseeker app layout. Pages that have been
+redesigned extend this instead of base_dashboard_jobseeker.html; pages that
+haven't keep the old look. It only fills the theming hooks of the old base:
+  top bar (logo + "View my Resume"), cream sidebar/page colors, footer with seals.
+Styling lives in static/css/public.css (".eh-chrome" section).
+{% endcomment %}
+
+{% block theme_head %}<link rel="stylesheet" href="{% static_v 'css/public.css' %}">{% endblock %}
+{% block chrome_class %}eh-chrome{% endblock %}
+{% block brand %}
+<a href="/dashboard/" class="eh-dash-brand">
+  <img src="{% static 'images/logo-01.png' %}" alt="">
+  <span><span class="easy">Easy</span><span class="hire">Hire</span></span>
+</a>
+{% endblock %}
+{% block header_actions %}<a href="/resume/" class="eh-btn eh-nav-resume">View my Resume</a>{% endblock %}
+{% block dash_footer %}{% include "public/_footer.html" with seals=True %}{% endblock %}

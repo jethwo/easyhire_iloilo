@@ -1,183 +1,93 @@
-{% extends "base/base.html" %}
-{% load static %}
+{% extends "public/_shell.html" %}
 
 {% block title %}Sign In — EasyHire{% endblock %}
+{% block view_class %}eh-view-auth{% if error %} eh-view-signin-form{% endif %}{% endblock %}
 
-{% block navbar %}{% endblock %}
+{% block right_panel %}
+<div class="eh-greet-row">
+  <h1 class="eh-greet">Hello, Jobseeker!</h1>
+  <button type="button" id="back-btn" class="eh-back" onclick="showLanding()" {% if not error %}style="display:none"{% endif %}>Back</button>
+</div>
 
-{% block content %}
-<div>
-
-  <!-- Navbar -->
-  <nav class="bg-surface px-3 sm:px-8 py-3 flex items-center justify-between gap-2 shadow-sm">
-    <a href="/" class="flex items-center gap-2 min-w-0">
-      <img src="{% static 'images/navbar_logo.svg' %}" alt="EasyHire" class="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0">
-      <span class="font-bold text-lg sm:text-xl truncate">
-        <span class="text-primary">Easy</span><span class="text-teal">Hire</span>
-      </span>
-    </a>
-    <div class="flex items-center gap-4 sm:gap-8 flex-shrink-0">
-      <div class="hidden md:flex items-center gap-6 text-sm">
-        <a href="/about/" class="text-muted hover:text-primary transition">About</a>
-        <a href="/jobs/" class="text-muted hover:text-primary transition">Jobs</a>
-        <a href="/analytics/" class="text-muted hover:text-primary transition">Analytics</a>
-        <a href="/employers/login/" class="text-primary font-semibold hover:text-teal transition">EasyHire for Employers</a>
-      </div>
-      <a href="/employers/login/" class="md:hidden text-primary text-xs font-semibold hover:text-teal transition whitespace-nowrap">For Employers</a>
-    </div>
-  </nav>
-
-  <!-- Split content -->
-  <div class="flex flex-col md:flex-row min-h-[calc(100vh_-_3.75rem)]">
-
-    <!-- Left panel -->
-    <div class="w-full md:w-1/2 bg-surface flex items-center justify-center py-8 md:py-12 px-3 sm:px-8">
-      {# 288px card centered on the panel. `w-full max-w-[288px]` lets it   #}
-      {# shrink to fit sub-320px viewports (older Android / iPhone SE)      #}
-      {# instead of overflowing when the outer padding + fixed width sum    #}
-      {# past the screen edge.                                              #}
-      <div class="bg-white border border-gray-200 rounded-2xl p-6 sm:p-8 w-full max-w-[288px] mx-auto shadow-sm relative">
-
-        <!-- eH icon -->
-        <div class="absolute top-4 right-4 w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center overflow-hidden">
-          <img src="{% static 'images/navbar_logo.svg' %}" alt="" class="w-6 h-6 opacity-70">
-        </div>
-
-        <!-- Greeting -->
-        <p class="text-[22px] text-primary font-normal leading-snug">Hello,</p>
-        <p class="text-[22px] text-primary font-extrabold italic leading-snug mb-1">Jobseeker!</p>
-        <a href="/employers/login/" class="text-xs text-muted underline block mb-5 hover:text-primary transition">Sign in as an Employer.</a>
-
-        {# Error banner — wrapped so showLanding() can hide it when the user  #}
-        {# clicks "Back" after a failed attempt. Without the wrapper, the    #}
-        {# error stays visible on the landing state which reads as broken.  #}
-        <div id="login-error-banner">
-        {% if error == 'invalid_credentials' %}
-        <div class="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-lg mb-4">
-          Incorrect email or password. Please try again.
-        </div>
-        {% elif error == 'employer_mismatch' %}
-        <div class="bg-amber/10 text-primary text-xs px-3 py-2 rounded-lg mb-4">
-          That account is not a jobseeker account.
-          <a href="/employers/login/" class="text-teal font-semibold underline">Log in as employer?</a>
-        </div>
-        {% elif error == 'staff_mismatch' %}
-        <div class="bg-amber/10 text-primary text-xs px-3 py-2 rounded-lg mb-4">
-          Admin accounts sign in at
-          <a href="/admin-panel/login/" class="text-teal font-semibold underline">the admin panel</a>.
-        </div>
-        {% elif error == 'inactive' %}
-        <div class="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-lg mb-4">
-          Your account has been disabled. Contact
-          <a href="mailto:easyhire.admin@gmail.com?subject=Disabled%20account%20-%20request%20for%20review"
-             class="underline font-semibold hover:text-red-700">easyhire.admin@gmail.com</a>
-          for more information.
-        </div>
-        {% endif %}
-        </div>{# /#login-error-banner #}
-
-        <!-- Landing state (3 buttons) -->
-        <div id="state-landing" {% if error %}style="display:none"{% endif %}>
-          <a href="/register/"
-             class="flex items-center justify-center w-full bg-primary text-white text-sm font-semibold py-3 rounded-full hover:bg-teal transition mb-3">
-            Create EasyHire Account
-          </a>
-          <button type="button" onclick="showSignIn()"
-                  class="w-full border border-primary text-primary text-sm font-semibold py-3 rounded-full hover:bg-primary/5 transition mb-4">
-            Sign In
-          </button>
-
-          <div class="border-t border-gray-100 my-1"></div>
-
-          <a href="/accounts/google/login/?process=login"
-             class="flex items-center justify-center gap-2.5 w-full border border-gray-200 text-primary text-sm font-semibold py-3 rounded-full hover:bg-gray-50 transition mt-3">
-            <!-- Google G logo -->
-            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Sign In with Google
-          </a>
-        </div>
-
-        <!-- Sign-in form state -->
-        <div id="state-signin" {% if not error %}style="display:none"{% endif %}>
-          <form method="POST" action="/login/">
-            {% csrf_token %}
-            <div class="mb-4">
-              <label class="block text-primary text-xs font-medium mb-1">Email Address</label>
-              <input type="email" name="email" placeholder="youremail@gmail.com" required
-                     class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-            </div>
-            <div class="mb-2">
-              <label class="block text-primary text-xs font-medium mb-1">Password</label>
-              <input type="password" name="password" placeholder="••••••••" required
-                     class="w-full bg-white border border-gray-200 rounded-full px-4 py-2.5 text-sm text-primary placeholder-gray-300 focus:outline-none focus:border-teal transition">
-            </div>
-            <div class="text-right mb-5">
-              <a href="/password-recovery/" data-carry-email class="text-xs text-muted hover:text-primary transition">Forgot password?</a>
-            </div>
-            <button type="submit"
-                    class="w-full bg-primary text-white text-sm font-semibold py-3 rounded-full hover:bg-teal transition">
-              Sign In
-            </button>
-          </form>
-          <button type="button" onclick="showLanding()"
-                  class="mt-4 text-xs text-muted hover:text-primary transition w-full text-center">
-            ← Back
-          </button>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Right panel: building photo (hidden on small screens to save space) -->
-    <div class="hidden md:block w-full md:w-1/2 relative overflow-hidden min-h-[500px]">
-      <div class="absolute inset-0 bg-cover bg-center"
-           style="background-image: url('{% static 'images/iloilo_city_hall.jpg' %}');"></div>
-      <div class="absolute inset-0 bg-primary/65"></div>
-      <!-- Branding -->
-      <div class="absolute bottom-10 left-10 right-10">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-            <img src="{% static 'images/navbar_logo.svg' %}" alt="EasyHire" class="w-9 h-9">
-          </div>
-          <span class="text-white text-3xl font-extrabold tracking-tight">EasyHire.</span>
-        </div>
-        <p class="text-white/90 text-base leading-relaxed">
-          Find the <strong>best jobs</strong> in<br>Iloilo City <strong>for you</strong>.
-        </p>
-      </div>
-    </div>
-
+{# Error banner — wrapped so showLanding() can hide it when the user clicks   #}
+{# "Back" after a failed attempt; otherwise it sticks around on the choice    #}
+{# screen and reads as broken.                                                 #}
+<div id="login-error-banner">
+  {% if error == 'invalid_credentials' %}
+  <div class="eh-alert">Incorrect email or password. Please try again.</div>
+  {% elif error == 'employer_mismatch' %}
+  <div class="eh-alert is-warn">
+    That account is not a jobseeker account.
+    <a href="/employers/login/">Log in as employer?</a>
   </div>
+  {% elif error == 'staff_mismatch' %}
+  <div class="eh-alert is-warn">
+    Admin accounts sign in at <a href="/admin-panel/login/">the admin panel</a>.
+  </div>
+  {% elif error == 'inactive' %}
+  <div class="eh-alert">
+    Your account has been disabled. Contact
+    <a href="mailto:easyhire.admin@gmail.com?subject=Disabled%20account%20-%20request%20for%20review">easyhire.admin@gmail.com</a>
+    for more information.
+  </div>
+  {% endif %}
+</div>
 
-  {% include "base/footer.html" %}
+<!-- Choice state: Sign In / Register / Google -->
+<div id="state-landing" {% if error %}style="display:none"{% endif %}>
+  <div class="eh-actions">
+    <button type="button" class="eh-btn" onclick="showSignIn()">Sign In</button>
+    <a href="/register/" class="eh-btn">Register</a>
+    <a href="/accounts/google/login/?process=login" class="eh-btn eh-btn-google">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Continue with Google
+    </a>
+  </div>
+</div>
+
+<!-- Sign-in form state -->
+<div id="state-signin" {% if not error %}style="display:none"{% endif %}>
+  <form method="POST" action="/login/" class="eh-form">
+    {% csrf_token %}
+    <label class="eh-label" for="login-email">Email Address</label>
+    <input class="eh-input" id="login-email" type="email" name="email" required autocomplete="email">
+
+    <label class="eh-label" for="login-password">Password</label>
+    <input class="eh-input" id="login-password" type="password" name="password" required autocomplete="current-password">
+    <div class="eh-linkrow">
+      <span>No account yet? <a href="/register/">Register here.</a></span>
+      <a href="/password-recovery/" data-carry-email>Forgot password?</a>
+    </div>
+
+    <button type="submit" class="eh-btn eh-submit">Continue</button>
+  </form>
 </div>
 
 <script>
 function showSignIn() {
   document.getElementById('state-landing').style.display = 'none';
   document.getElementById('state-signin').style.display = 'block';
+  document.getElementById('back-btn').style.display = 'block';
+  document.body.classList.add('eh-view-signin-form');
 }
 function showLanding() {
   document.getElementById('state-signin').style.display = 'none';
   document.getElementById('state-landing').style.display = 'block';
-  // Clear the "invalid email or password" banner too — it'd otherwise stay
-  // stuck on top of the landing state and read as broken.
+  document.getElementById('back-btn').style.display = 'none';
+  document.body.classList.remove('eh-view-signin-form');
   var err = document.getElementById('login-error-banner');
   if (err) err.style.display = 'none';
 }
 
-// Carry the currently-typed sign-in email onto the password recovery page
-// so the reset link always targets the address the user is trying to log
-// in with — not an arbitrary email an attacker at a shared machine might
-// type later. The eh_last_email cookie is the fallback for a returning
-// user who hasn't typed anything this session.
-document.querySelectorAll('a[data-carry-email]').forEach(function(link) {
-  link.addEventListener('click', function() {
+// Carry the typed sign-in email onto the password recovery page so the reset
+// request targets the address the user is actually trying to log in with.
+document.querySelectorAll('a[data-carry-email]').forEach(function (link) {
+  link.addEventListener('click', function () {
     var input = document.querySelector('input[name="email"]');
     var val = input ? input.value.trim() : '';
     if (val) link.href = '/password-recovery/?email=' + encodeURIComponent(val);
